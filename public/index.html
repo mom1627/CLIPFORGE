@@ -57,7 +57,7 @@ footer{font-size:12px;color:#9aacca;line-height:1.6;margin-top:22px}
 <div id="streamers" style="margin-top:12px">Noch keine Streamer</div>
 <div id="discovered" class="hide panel" aria-live="polite"></div>
 </section>
-<section class="panel"><h2>MP4-Clips &amp; TikTok</h2>
+<section class="panel"><h2>MP4-Clips &amp; TikTok</h2><div id="cloudVideos" class="muted mini">Prüfe, ob privater Videospeicher eingerichtet ist …</div>
 <p class="muted mini">Neue Pipeline im GitHub-Projekt: Streamlink nimmt freigegebene öffentliche Liveszenen auf, FFmpeg erstellt vertikale MP4s, TikTok kann Entwürfe empfangen. Der Video-Recorder braucht einen separaten Cloud-Server und ist noch nicht produktiv gestartet.</p>
 <div class="actions"><a class="btn secondary" href="https://github.com/mom1627/CLIPFORGE/actions" target="_blank" rel="noopener noreferrer">Video-Pipeline &amp; Tests</a><a class="btn secondary" href="https://github.com/mom1627/CLIPFORGE#neu-live-aufnahme--916-mp4--tiktok-entwurf-separater-videorecorder" target="_blank" rel="noopener noreferrer">Einrichtung</a></div>
 </section>
@@ -84,6 +84,13 @@ async function refresh(){
   $('login').classList.add('hide');$('dashboard').classList.remove('hide');
   $('connected').textContent=s.connected?'Twitch verbunden · Automatische Clips höchstens alle '+s.interval+' Minuten je Streamer':'Noch kein Twitch-Konto verbunden';
   if(s.warning)notice(s.warning,true);
+  try {
+   const m=await api('/api/videos');
+   $('cloudVideos').innerHTML=m.configured
+      ? (m.videos.length?m.videos.map(v=>'<div class="clip"><strong>'+esc(v.name)+'</strong> · '+(Number(v.bytes)/1048576).toFixed(1)+' MB<div><a class="btn" href="'+esc(v.download_url)+'">MP4 auf iPhone laden</a></div></div>').join(''):'Noch keine MP4s hochgeladen. Der Video-Recorder ist noch nicht verbunden.')
+      : 'Privater MP4-Speicher noch nicht eingerichtet. Wenn R2 verbunden ist, erscheinen hier deine Videodateien.';
+  }catch(videoErr){$('cloudVideos').textContent='MP4-Liste nicht erreichbar: '+videoErr.message}
+
   const online=new Map(s.live.map(x=>[x.login,x]));
   $('streamers').innerHTML=s.people.length?s.people.map(p=>{
    const live=online.get(p.login);
