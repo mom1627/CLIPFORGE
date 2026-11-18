@@ -1,0 +1,26 @@
+name: CLIPFORGE – Code und Video-Rendering prüfen
+on:
+  push:
+    paths:
+      - "scripts/**"
+      - "tests/test_capture.py"
+      - "tests/test_render.py"
+      - ".github/workflows/validate-live-capture.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python-Syntax
+        run: python -m compileall -q scripts tests/test_capture.py tests/test_render.py
+      - name: Tests mit kuenstlichem Video (keine Twitch-Aufnahme)
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
