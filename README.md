@@ -1,5 +1,20 @@
 # CLIPFORGE Free – Twitch Live-Clipper fürs iPhone
 
+## Sofort testbarer 0-€-Weg ohne PC: Google Colab (iPhone)
+
+**Wichtigster aktueller Testweg für echte MP4-Clips:** Das eigenständige Notebook [CLIPFORGE Gratis iPhone Colab](notebooks/CLIPFORGE_Gratis_iPhone_Colab.ipynb).
+
+[**In Google Colab öffnen**](https://colab.research.google.com/github/mom1627/CLIPFORGE/blob/main/notebooks/CLIPFORGE_Gratis_iPhone_Colab.ipynb)
+
+- Auf dem iPhone in Colab mit Google anmelden; bei **privatem** GitHub-Repository ggf. GitHub-Zugriff für Colab autorisieren oder die IPYNB über GitHub → Download in Colab importieren.
+- Name des genehmigten Twitch-Streamers, kurze Aufnahmezeit (40–160 Sekunden), Clipdauer (15–60 Sekunden) und gewünschte Auflösung einstellen. Aufnahme- und Wiederverwendungsrechte bestätigen.
+- **Laufzeit → Alle ausführen** wählen. Das Notebook installiert Streamlink, prüft den gerade laufenden öffentlichen Stream, nimmt einen Ausschnitt auf, wählt das lauteste Zeitfenster und rendert ein MP4.
+- Das fertige 9:16-MP4 wird über den Dateidownload von Colab aufs iPhone angeboten (notfalls im linken Dateibrowser).
+- **Grenzen:** Google Colab Free hat ungarantierte Kapazität/Laufzeiten; Twitch kann Cloud-IP-Zugriff blockieren. Aufnahme ist nur bei aktiver Colab-Sitzung möglich. Der Klick ist **manuell, keine 24/7-Automation**. Es ist noch **kein echter Livestream-Test** in Colab erfolgt. Bei Fehlern Ausgabe der Colab-Zellen prüfen.
+
+---
+
+
 Die kostenlose Cloud-Version der CLIPFORGE-App liegt direkt in diesem privaten Repository. Sie kann **laufende Twitch-Streams überwachen** und daraus **Twitch-Clips** erstellen, während dein PC ausgeschaltet ist.
 
 ## Funktionen
