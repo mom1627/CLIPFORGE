@@ -55,6 +55,7 @@ async function schema(db) {
   await db.prepare('CREATE TABLE IF NOT EXISTS oauth_states (state TEXT PRIMARY KEY, created_at INTEGER NOT NULL)').run();
   await db.prepare('CREATE TABLE IF NOT EXISTS login_attempts (client_key TEXT PRIMARY KEY, failures INTEGER NOT NULL DEFAULT 0, blocked_until INTEGER NOT NULL DEFAULT 0)').run();
   await db.prepare('CREATE TABLE IF NOT EXISTS clip_share (id TEXT PRIMARY KEY, edit_url TEXT NOT NULL, expires_at INTEGER NOT NULL)').run();
+  await db.prepare('CREATE TABLE IF NOT EXISTS rendered_mp4 (id TEXT PRIMARY KEY, created_at INTEGER NOT NULL, size_bytes INTEGER NOT NULL)').run();
 }
 async function getToken(env) {
   const row = await env.DB.prepare('SELECT * FROM twitch_auth WHERE id=1').first();
@@ -167,8 +168,56 @@ async function route(request,env) {
     return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Dashboard noch nicht bereit', {status:503});
   configCheck(env);
   await schema(env.DB);
+  if(path==='/api/ingest' && request.method==='PUT') {
+    if(!env.CLIPS_R2 || !env.CLIPFORGE_INGEST_SECRET) return answer({error:'MP4-Speicher noch nicht eingerichtet'},503);
+    const authorization=request.headers.get('Authorization')||'';
+    if(!authorization.startsWith('Bearer ')) return answer({error:'Nicht autorisiert'},401);
+    const provided=authorization.slice(7);
+    if(provided.length<24 || provided.length>512) return answer({error:'Nicht autorisiert'},401);
+    const expected=await sign(env.SESSION_SECRET,env.CLIPFORGE_INGEST_SECRET);
+    const candidate=await sign(env.SESSION_SECRET,provided);
+    let mismatch=0;
+    for(let i=0;i<64;i++) mismatch|=expected.charCodeAt(i)^candidate.charCodeAt(i);
+    if(mismatch!==0) return answer({error:'Nicht autorisiert'},401);
+    const filename=request.headers.get('X-Clip-Filename')||'';
+    if(!/^clipforge_[a-z0-9_]{3,25}_[0-9]{8}_[0-9]{6}\.mp4$/.test(filename))
+      return answer({error:'Ungueltiger Dateiname'},400);
+    const size=Number(request.headers.get('content-length')||0);
+    if(!Number.isSafeInteger(size) || size<10000 || size>60*1024*1024 || !request.body)
+      return answer({error:'MP4 muss 10 KB bis 60 MB gross sein'},413);
+    const stored=await env.CLIPS_R2.put(filename,request.body,{httpMetadata:{contentType:'video/mp4'}});
+    if(!stored) return answer({error:'R2-Speicherung fehlgeschlagen'},502);
+    await env.DB.prepare('INSERT OR REPLACE INTO rendered_mp4 (id,created_at,size_bytes) VALUES(?,?,?)')
+      .bind(filename,Date.now(),size).run();
+    return answer({ok:true,filename,bytes:size},201);
+  }
   if(path==='/login' && request.method==='POST') return login(request,env);
   if(!await loggedIn(request,env)) return answer({error:'Nicht angemeldet'},401);
+  if(path==='/api/videos' && request.method==='GET') {
+    if(!env.CLIPS_R2) return answer({configured:false,videos:[]});
+    const videos=(await env.DB.prepare('SELECT id,created_at,size_bytes FROM rendered_mp4 ORDER BY created_at DESC LIMIT 80').all()).results||[];
+    return answer({configured:true,videos:videos.map(v=>({
+      name:v.id,bytes:v.size_bytes,created_at:v.created_at,
+      download_url:'/api/videos/'+encodeURIComponent(v.id)
+    }))});
+  }
+  if(path.startsWith('/api/videos/') && request.method==='GET') {
+    if(!env.CLIPS_R2) return answer({error:'Kein MP4-Speicher eingerichtet'},503);
+    const name=decodeURIComponent(path.slice('/api/videos/'.length));
+    if(!/^clipforge_[a-z0-9_]{3,25}_[0-9]{8}_[0-9]{6}\.mp4$/.test(name))
+      return answer({error:'Ungueltiger Name'},400);
+    const recorded=await env.DB.prepare('SELECT id FROM rendered_mp4 WHERE id=?').bind(name).first();
+    if(!recorded) return answer({error:'Datei nicht gefunden'},404);
+    const asset=await env.CLIPS_R2.get(name);
+    if(!asset) return answer({error:'Datei nicht gefunden'},404);
+    return new Response(asset.body,{headers:{
+      'content-type':'video/mp4',
+      'content-disposition':'attachment; filename="'+name+'"',
+      'content-length':String(asset.size),
+      'cache-control':'private, no-store',
+      'x-content-type-options':'nosniff'
+    }});
+  }
   if(path==='/logout' && request.method==='POST') {
     originCheck(request);
     return answer({ok:true},200,{'set-cookie':'clipforge_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'});
