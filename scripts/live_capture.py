@@ -270,17 +270,21 @@ def main() -> int:
         rotated = [target]
     report = {"checked_at": now.isoformat(), "tested_channels": rotated,
               "status": "no_live_stream", "uploaded_to_tiktok": False}
-    channel = next((item for item in rotated if available(item)), None)
-    if channel is None:
-        print("Keiner der freigegebenen Kanäle ist gerade über Streamlink erreichbar.")
-        write_report(report)
-        return 0
-    game = twitch_game(channel)
+    channel, game = None, None
     allowed_games = [g.strip().lower() for g in os.getenv("ALLOWED_GAMES", "Grand Theft Auto VI").split(",") if g.strip()]
-    if game is not None and game.lower() not in allowed_games:
-        report.update(status="skipped_other_game", streamer=channel, game_name=game)
+    for candidate in rotated:
+        if not available(candidate):
+            continue
+        candidate_game = twitch_game(candidate)
+        if candidate_game is not None and candidate_game.lower() not in allowed_games:
+            print(f"Ueberspringe {candidate}: spielt '{candidate_game or 'kein Spiel'}'.")
+            continue
+        channel, game = candidate, candidate_game
+        break
+    if channel is None:
+        print("Keiner der freigegebenen Streamer sendet gerade das gesuchte Spiel bzw. ist erreichbar.")
+        report["status"] = "no_approved_live_gta_stream"
         write_report(report)
-        print(f"Streamer {channel} spielt aktuell '{game or 'kein Spiel'}', nicht eines der gewuenschten GTA-Spiele.")
         return 0
     if game is None:
         print("Hinweis: Twitch-Spielkategorie mangels API-Zugang nicht geprueft.")
