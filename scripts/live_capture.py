@@ -181,6 +181,47 @@ def api_json(url: str, token: str, payload: dict) -> dict:
         raise RuntimeError("TikTok API: " + str(result.get("error", {}).get("code", "unbekannter Fehler")))
     return result.get("data", {})
 
+def tiktok_access_token() -> str:
+    """Refresh and rotate TikTok OAuth tokens on a persistent host, if configured."""
+    root = Path(os.getenv("CLIPFORGE_STATE_DIR", "data"))
+    token_file = root / "tiktok_token.json"
+    stored = {}
+    if token_file.exists():
+        try:
+            stored = json.loads(token_file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            stored = {}
+    if stored.get("access_token") and stored.get("expires_at", 0) > time.time() + 600:
+        return stored["access_token"]
+    key = os.getenv("TIKTOK_CLIENT_KEY", "")
+    secret = os.getenv("TIKTOK_CLIENT_SECRET", "")
+    refresh = stored.get("refresh_token") or os.getenv("TIKTOK_REFRESH_TOKEN", "")
+    if key and secret and refresh:
+        from urllib.parse import urlencode
+        data = urlencode({"client_key": key, "client_secret": secret,
+                          "grant_type": "refresh_token", "refresh_token": refresh}).encode()
+        req = urllib.request.Request("https://open.tiktokapis.com/v2/oauth/token/",
+            data=data, method="POST",
+            headers={"Content-Type": "application/x-www-form-urlencoded"})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                payload = json.load(resp)
+        except urllib.error.HTTPError as exc:
+            raise RuntimeError(f"TikTok Token-Aktualisierung fehlgeschlagen (HTTP {exc.code})") from None
+        if not payload.get("access_token") or not payload.get("refresh_token"):
+            raise RuntimeError("TikTok Token-Aktualisierung ungueltig: erneute OAuth-Anmeldung noetig")
+        root.mkdir(parents=True, exist_ok=True)
+        current = {"access_token": payload["access_token"],
+                   "refresh_token": payload["refresh_token"],
+                   "expires_at": time.time() + int(payload.get("expires_in", 3600)),
+                   "open_id": payload.get("open_id", "")}
+        new_file = token_file.with_suffix(".tmp")
+        new_file.write_text(json.dumps(current), encoding="utf-8")
+        os.chmod(new_file, 0o600)
+        new_file.replace(token_file)
+        return payload["access_token"]
+    return os.getenv("TIKTOK_ACCESS_TOKEN", "").strip()
+
 def tiktok_draft(mp4: Path, token: str) -> str:
     """Official Content Posting API inbox video upload. NOT a public post."""
     size = mp4.stat().st_size
@@ -258,7 +299,7 @@ def main() -> int:
                   mp4_bytes=clip.stat().st_size, clip_start_seconds=start,
                   audio_score_db=energy_db, clip_length_seconds=min(clip_seconds, duration-start),
                   source=f"https://www.twitch.tv/{channel}", game_name=game, format="vertical_mp4")
-    token = os.getenv("TIKTOK_ACCESS_TOKEN", "").strip()
+    token = tiktok_access_token()
     mode = os.getenv("TIKTOK_UPLOAD_MODE", "draft").lower()
     if mode == "draft" and token and (game is not None or os.getenv("ALLOW_UNVERIFIED_GAME_UPLOAD", "false").lower() == "true"):
         try:
