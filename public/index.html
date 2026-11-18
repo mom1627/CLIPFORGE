@@ -55,6 +55,7 @@ footer{font-size:12px;color:#9aacca;line-height:1.6;margin-top:22px}
 <button class="secondary" data-name="papaplatte">Papaplatte</button>
 </div>
 <div id="streamers" style="margin-top:12px">Noch keine Streamer</div>
+<div id="discovered" class="hide panel" aria-live="polite"></div>
 </section>
 <section class="panel"><h2>Erstellte Twitch-Clips</h2><div id="clips" class="muted mini">Noch keine Clips vorhanden</div></section>
 <div class="helper mini"><strong>Was automatisch passiert:</strong> Der Cloudflare-Worker prüft alle fünf Minuten, welche Streamer live sind. Wenn Auto-Clips aktiviert sind, kann er im eingestellten Abstand Twitch-Clips anfordern. Er erkennt dabei noch keine spektakulären Szenen mit KI.</div>
@@ -82,7 +83,7 @@ async function refresh(){
   const online=new Map(s.live.map(x=>[x.login,x]));
   $('streamers').innerHTML=s.people.length?s.people.map(p=>{
    const live=online.get(p.login);
-   return '<div class="streamer"><div class="row"><strong>'+esc(p.login)+'</strong><span class="tag '+(live?'live':'')+'">'+(live?'● LIVE · '+Number(live.viewers).toLocaleString('de-DE'):'Offline')+'</span></div><div class="actions"><button data-action="clip" data-login="'+esc(p.login)+'" '+(!live?'disabled':'')+'>Jetzt clippen</button><button class="secondary" data-action="auto" data-login="'+esc(p.login)+'">Auto: '+(p.auto_clip?'AN':'AUS')+'</button><button class="secondary" data-action="remove" data-login="'+esc(p.login)+'">Entfernen</button><a class="btn secondary" href="https://www.twitch.tv/'+encodeURIComponent(p.login)+'" target="_blank" rel="noopener noreferrer">Auf Twitch prüfen</a></div></div>';
+   return '<div class="streamer"><div class="row"><strong>'+esc(p.login)+'</strong><span class="tag '+(live?'live':'')+'">'+(live?'● LIVE · '+Number(live.viewers).toLocaleString('de-DE'):'Offline')+'</span></div><div class="actions"><button data-action="clip" data-login="'+esc(p.login)+'" '+(!live?'disabled':'')+'>Jetzt clippen</button><button class="secondary" data-action="auto" data-login="'+esc(p.login)+'">Auto: '+(p.auto_clip?'AN':'AUS')+'</button><button class="secondary" data-action="discover" data-login="'+esc(p.login)+'">Clips der Woche</button><button class="secondary" data-action="remove" data-login="'+esc(p.login)+'">Entfernen</button><a class="btn secondary" href="https://www.twitch.tv/'+encodeURIComponent(p.login)+'" target="_blank" rel="noopener noreferrer">Auf Twitch prüfen</a></div></div>';
   }).join(''):'<p class="muted mini">Noch keine Streamer in der Watchlist.</p>';
   $('clips').innerHTML=s.clips.length?s.clips.map(c=>'<div class="clip"><strong>'+esc(c.login)+'</strong> · '+new Date(c.created_at).toLocaleString('de-DE')+' · '+esc(c.status)+'<div class="actions"><a class="btn secondary" href="'+esc(c.url)+'" target="_blank" rel="noopener noreferrer">Auf Twitch ansehen</a>'+(c.edit_url?'<a class="btn secondary" href="'+esc(c.edit_url)+'" target="_blank" rel="noopener noreferrer">Twitch bearbeiten / teilen</a>':'')+(c.status==='ready'?'<button data-clip-download="'+esc(c.id)+'">MP4 anfordern</button>':'')+'</div></div>').join(''):'Noch keine Clips vorhanden';
  }catch(e){if(e.message==='Nicht angemeldet'){$('login').classList.remove('hide');$('dashboard').classList.add('hide')}else notice(e.message,true)}
@@ -111,6 +112,13 @@ $('streamers').onclick=async e=>{
  b.disabled=true;
  try{
   const action=b.dataset.action,login=b.dataset.login;
+  if(action==='discover'){
+    const result=await api('/api/discover?login='+encodeURIComponent(login));
+    const found=$('discovered');found.classList.remove('hide');
+    found.innerHTML='<h2>Oeffentliche Twitch-Clips: '+esc(login)+'</h2><p class="muted mini">Beliebte Clips der letzten 7 Tage. Auf Twitch ansehen und nur mit entsprechender Freigabe auf TikTok teilen.</p>'+(result.clips.length?result.clips.map(c=>'<div class="clip"><strong>'+esc(c.title||'Ohne Titel')+'</strong> · '+Number(c.views||0).toLocaleString('de-DE')+' Aufrufe · '+Math.round(Number(c.duration)||0)+' Sek.<div class="actions"><a class="btn secondary" target="_blank" rel="noopener noreferrer" href="'+esc(c.url)+'">Auf Twitch ansehen / teilen</a></div></div>').join(''):'<p class="muted">In den letzten 7 Tagen wurden keine oeffentlichen Clips gefunden.</p>');
+    found.scrollIntoView({behavior:'smooth',block:'nearest'});
+    notice('Twitch-Clips von '+login+' gefunden: '+result.clips.length);
+  }
   if(action==='clip'){await api('/api/clip','POST',{login});notice('Clip angefordert. Twitch verarbeitet ihn noch.')}
   if(action==='auto'){await api('/api/auto','POST',{login});notice('Auto-Clips umgestellt')}
   if(action==='remove'){await api('/api/remove','POST',{login});notice('Streamer entfernt')}
