@@ -1,4 +1,4 @@
-name: CLIPFORGE – Live-Stream zu TikTok-MP4
+name: CLIPFORGE – Video-Pipeline Test
 on:
   workflow_dispatch:
     inputs:
@@ -11,10 +11,6 @@ on:
         required: false
         default: "100"
         type: string
-  schedule:
-    # Im Gratis-Modus maximal ein kurzer Mitschnitt alle zwei Stunden.
-    # Läuft erst, nachdem LIVE_CAPTURE_ENABLED=true als Repository-Variable gesetzt wurde.
-    - cron: "17 */2 * * *"
 
 permissions:
   contents: read
@@ -25,7 +21,6 @@ concurrency:
 
 jobs:
   capture:
-    if: github.event_name == 'workflow_dispatch' || vars.LIVE_CAPTURE_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 9
     env:
