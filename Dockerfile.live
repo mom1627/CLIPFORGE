@@ -1,0 +1,20 @@
+# CLIPFORGE recorder – requires a persistent host with permitted live-stream access.
+FROM python:3.12-slim
+ENV PYTHONUNBUFFERED=1 \
+    CLIPFORGE_OUTPUT=/data/clips \
+    CLIPFORGE_STATE_DIR=/data \
+    CAPTURE_INTERVAL_MINUTES=120 \
+    MAX_CLIPS_PER_DAY=8 \
+    CAPTURE_SECONDS=100 \
+    CLIP_SECONDS=38 \
+    VIDEO_WIDTH=720
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg ca-certificates tini && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir 'streamlink>=8,<9'
+WORKDIR /app
+COPY scripts/ /app/scripts/
+RUN mkdir -p /data/clips && useradd --uid 10001 --create-home clipforge \
+    && chown -R clipforge:clipforge /data
+USER clipforge
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["python", "/app/scripts/daemon.py"]
