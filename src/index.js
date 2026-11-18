@@ -56,6 +56,9 @@ async function schema(db) {
   await db.prepare('CREATE TABLE IF NOT EXISTS login_attempts (client_key TEXT PRIMARY KEY, failures INTEGER NOT NULL DEFAULT 0, blocked_until INTEGER NOT NULL DEFAULT 0)').run();
   await db.prepare('CREATE TABLE IF NOT EXISTS clip_share (id TEXT PRIMARY KEY, edit_url TEXT NOT NULL, expires_at INTEGER NOT NULL)').run();
   await db.prepare('CREATE TABLE IF NOT EXISTS rendered_mp4 (id TEXT PRIMARY KEY, created_at INTEGER NOT NULL, size_bytes INTEGER NOT NULL)').run();
+  await db.prepare('CREATE TABLE IF NOT EXISTS tiktok_auth (id INTEGER PRIMARY KEY CHECK(id=1), access_token TEXT NOT NULL, refresh_token TEXT NOT NULL, expires_at INTEGER NOT NULL, open_id TEXT NOT NULL, scopes TEXT NOT NULL)').run();
+  await db.prepare("CREATE TABLE IF NOT EXISTS tiktok_drafts (clip_id TEXT PRIMARY KEY, state TEXT NOT NULL, created_at INTEGER NOT NULL, publish_id TEXT NOT NULL DEFAULT '', last_error TEXT NOT NULL DEFAULT '')").run();
+  await db.prepare('CREATE TABLE IF NOT EXISTS publishing_settings (id INTEGER PRIMARY KEY CHECK(id=1), auto_drafts INTEGER NOT NULL DEFAULT 0)').run();
 }
 async function getToken(env) {
   const row = await env.DB.prepare('SELECT * FROM twitch_auth WHERE id=1').first();
@@ -80,6 +83,121 @@ async function twitch(env,endpoint,opts={}) {
   if(!r.ok) throw new Error('Twitch ('+r.status+'): '+(data.message||'API-Fehler'));
   return data;
 }
+
+// Separate TikTok OAuth credentials; Twitch does not authorize TikTok posting.
+function tiktokConfigured(env) {
+  return !!(env.TIKTOK_CLIENT_KEY && env.TIKTOK_CLIENT_SECRET);
+}
+async function tokenExchangeTikTok(env,params) {
+  const payload=new URLSearchParams({
+    client_key:env.TIKTOK_CLIENT_KEY,
+    client_secret:env.TIKTOK_CLIENT_SECRET,
+    ...params
+  });
+  const response=await fetch('https://open.tiktokapis.com/v2/oauth/token/',{
+    method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:payload
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok || !data.access_token || !data.refresh_token)
+    throw new Error('TikTok-OAuth fehlgeschlagen. App-Freigabe, Client-Key und Berechtigungen pruefen.');
+  if(!String(data.scope||'').split(',').includes('video.upload'))
+    throw new Error('TikTok hat video.upload nicht freigegeben.');
+  return data;
+}
+async function saveTikTokAuth(env,data) {
+  await env.DB.prepare('INSERT INTO tiktok_auth (id,access_token,refresh_token,expires_at,open_id,scopes) VALUES(1,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET access_token=excluded.access_token,refresh_token=excluded.refresh_token,expires_at=excluded.expires_at,open_id=excluded.open_id,scopes=excluded.scopes')
+    .bind(data.access_token,data.refresh_token,Date.now()+Number(data.expires_in||3600)*1000,
+      String(data.open_id||''),String(data.scope||'')).run();
+}
+async function getTikTokToken(env) {
+  if(!tiktokConfigured(env)) throw new Error('TikTok Developer App fehlt (zwei Cloudflare-Secrets).');
+  const row=await env.DB.prepare('SELECT * FROM tiktok_auth WHERE id=1').first();
+  if(!row) throw new Error('TikTok noch nicht mit CLIPFORGE verbunden.');
+  if(row.expires_at > Date.now()+180000) return row.access_token;
+  const data=await tokenExchangeTikTok(env,{grant_type:'refresh_token',refresh_token:row.refresh_token});
+  await saveTikTokAuth(env,{...data,open_id:data.open_id||row.open_id,scope:data.scope||row.scopes});
+  return data.access_token;
+}
+function trustedTwitchCDN(raw) {
+  let url;try {url=new URL(raw);}catch {throw new Error('Twitch lieferte ungueltigen Videolink.');}
+  if(url.protocol!=='https:' || !(url.hostname==='twitchcdn.net'||url.hostname.endsWith('.twitchcdn.net')))
+    throw new Error('Unbekannter Twitch-Videoserver.');
+  return url.href;
+}
+async function twitchFileUrl(env,clipId,login) {
+  let streamer=await env.DB.prepare('SELECT twitch_id FROM streamers WHERE login=?').bind(login).first();
+  if(!streamer){
+    const lookup=await twitch(env,'/users?login='+encodeURIComponent(login));
+    if(!lookup.data?.[0]?.id) throw new Error('Twitch-Streamer nicht gefunden');
+    streamer={twitch_id:lookup.data[0].id};
+  }
+  const who=await twitch(env,'/users');
+  const editorId=who.data?.[0]?.id;
+  if(!editorId)throw new Error('Twitch-Nutzeridentitaet fehlt.');
+  const q=new URLSearchParams({broadcaster_id:streamer.twitch_id,editor_id:editorId,clip_id:clipId});
+  let result;
+  try{result=await twitch(env,'/clips/downloads?'+q);}catch(e){
+    if(String(e.message).includes('Twitch (403)'))
+      throw new Error('Fuer MP4/TikTok muss dich der Streamer bei Twitch als Kanal-Editor freischalten; eine private Erlaubnis reicht fuer die Twitch-API nicht.');
+    throw e;
+  }
+  const file=(result.data||[]).find(x=>x.clip_id===clipId);
+  const chosen=file?.portrait_download_url||file?.landscape_download_url;
+  if(!chosen)throw new Error('Kein Twitch-MP4 fuer diesen Clip freigegeben.');
+  return {url:trustedTwitchCDN(chosen),portrait:!!file.portrait_download_url};
+}
+function trustedTikTokUploadURL(raw) {
+  let url;try{url=new URL(raw);}catch{throw new Error('TikTok lieferte keinen gueltigen Upload-Link.');}
+  if(url.protocol!=='https:' || !(url.hostname==='tiktokapis.com'||url.hostname.endsWith('.tiktokapis.com')))
+    throw new Error('Unerwarteter TikTok-Upload-Host.');
+  return url.href;
+}
+async function submitTikTokDraft(env,clipId) {
+  const clip=await env.DB.prepare('SELECT id,login,status,mode FROM clips WHERE id=?').bind(clipId).first();
+  if(!clip || clip.status!=='ready')throw new Error('Nur erfolgreich erstellte Twitch-Clips koennen gesendet werden.');
+  const exists=await env.DB.prepare('SELECT * FROM tiktok_drafts WHERE clip_id=?').bind(clipId).first();
+  if(exists)throw new Error('Dieser Clip wurde schon an TikTok gesendet oder ein Uploadversuch ist unklar. Bitte Status pruefen.');
+  const access=await getTikTokToken(env);
+  const asset=await twitchFileUrl(env,clipId,clip.login);
+  // Twitch-authorized file streaming: do not buffer, re-encode or persist media on Cloudflare.
+  const video=await fetch(asset.url);
+  if(!video.ok || !video.body)throw new Error('Twitch-Videodatei ist nicht erreichbar.');
+  const bytes=Number(video.headers.get('content-length'));
+  if(!Number.isSafeInteger(bytes) || bytes<10000 || bytes>60*1024*1024){
+    await video.body.cancel().catch(()=>{});
+    throw new Error('Twitch muss eine MP4 von 10 KB bis 60 MB mit bekannter Groesse liefern.');
+  }
+  await env.DB.prepare("INSERT INTO tiktok_drafts (clip_id,state,created_at) VALUES(?,'processing',?)")
+    .bind(clipId,Date.now()).run();
+  try {
+    const initResponse=await fetch('https://open.tiktokapis.com/v2/post/publish/inbox/video/init/',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+access,'content-type':'application/json'},
+      body:JSON.stringify({source_info:{source:'FILE_UPLOAD',video_size:bytes,chunk_size:bytes,total_chunk_count:1}})
+    });
+    const init=await initResponse.json().catch(()=>({}));
+    if(!initResponse.ok || init.error?.code!=='ok' || !init.data?.upload_url)
+      throw new Error('TikTok lehnte den Entwurf ab: '+String(init.error?.code||initResponse.status));
+    const dest=trustedTikTokUploadURL(init.data.upload_url);
+    const upload=await fetch(dest,{
+      method:'PUT',
+      headers:{'content-type':'video/mp4','content-length':String(bytes),
+        'content-range':'bytes 0-'+(bytes-1)+'/'+bytes},
+      body:video.body
+    });
+    if(!upload.ok)throw new Error('TikTok-MP4-Transfer meldet HTTP '+upload.status);
+    await env.DB.prepare("UPDATE tiktok_drafts SET state='inbox_sent', publish_id=? WHERE clip_id=?")
+      .bind(String(init.data.publish_id||''),clipId).run();
+    return {sent:true,state:'inbox_sent',portrait:asset.portrait,public_post:false,
+      message:'TikTok hat den Entwurf entgegengenommen. Bitte ueber die TikTok-Mitteilung veroeffentlichen.'};
+  } catch(err) {
+    // Unknown failure: forbid blind retries to avoid duplicate uploads.
+    await env.DB.prepare("UPDATE tiktok_drafts SET state='unknown',last_error=? WHERE clip_id=?")
+      .bind(String(err.message||err).slice(0,180),clipId).run();
+    throw err;
+  }
+}
+
 async function streams(env,people) {
   if(!people.length) return new Map();
   const qs = new URLSearchParams();
