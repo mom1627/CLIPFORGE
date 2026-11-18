@@ -15,4 +15,4 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "clipforge-live"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "2b377bc3-c5d6-40d2-89b8-ec62c4d42fee"
