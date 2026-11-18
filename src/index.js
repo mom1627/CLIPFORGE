@@ -54,6 +54,7 @@ async function schema(db) {
   await db.prepare("CREATE TABLE IF NOT EXISTS clips (id TEXT PRIMARY KEY, login TEXT NOT NULL, url TEXT NOT NULL, created_at INTEGER NOT NULL, mode TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending')").run();
   await db.prepare('CREATE TABLE IF NOT EXISTS oauth_states (state TEXT PRIMARY KEY, created_at INTEGER NOT NULL)').run();
   await db.prepare('CREATE TABLE IF NOT EXISTS login_attempts (client_key TEXT PRIMARY KEY, failures INTEGER NOT NULL DEFAULT 0, blocked_until INTEGER NOT NULL DEFAULT 0)').run();
+  await db.prepare('CREATE TABLE IF NOT EXISTS clip_share (id TEXT PRIMARY KEY, edit_url TEXT NOT NULL, expires_at INTEGER NOT NULL)').run();
 }
 async function getToken(env) {
   const row = await env.DB.prepare('SELECT * FROM twitch_auth WHERE id=1').first();
@@ -101,6 +102,12 @@ async function clip(env,person,mode,now=Date.now()) {
   const url='https://clips.twitch.tv/'+encodeURIComponent(id);
   await env.DB.prepare('INSERT OR IGNORE INTO clips (id,login,url,created_at,mode,status) VALUES(?,?,?,?,?,?)')
     .bind(id,person.login,url,now,mode,'pending').run();
+  if(result.data?.[0]?.edit_url) {
+    const editUrl=result.data[0].edit_url;
+    if(/^https:\/\/(clips\.twitch\.tv|www\.twitch\.tv|dashboard\.twitch\.tv)\//.test(editUrl))
+      await env.DB.prepare('INSERT OR REPLACE INTO clip_share (id,edit_url,expires_at) VALUES(?,?,?)')
+        .bind(id,editUrl,now+24*3600000).run();
+  }
   await env.DB.prepare('UPDATE streamers SET last_clip_at=? WHERE login=?')
     .bind(now,person.login).run();
   return {id,url,login:person.login,status:'pending'};
@@ -173,7 +180,7 @@ async function route(request,env) {
     await env.DB.prepare('DELETE FROM oauth_states WHERE created_at<?')
       .bind(Date.now()-600000).run();
     const qs=new URLSearchParams({client_id:env.TWITCH_CLIENT_ID,
-      redirect_uri:url.origin+'/auth/callback',response_type:'code',scope:'clips:edit',state});
+      redirect_uri:url.origin+'/auth/callback',response_type:'code',scope:'clips:edit editor:manage:clips',state});
     return Response.redirect(AUTH+'/authorize?'+qs,302);
   }
   if(path==='/auth/callback' && request.method==='GET') {
@@ -196,10 +203,44 @@ async function route(request,env) {
   if(path==='/api/state' && request.method==='GET') {
     const connected=!!(await env.DB.prepare('SELECT id FROM twitch_auth WHERE id=1').first());
     const people=(await env.DB.prepare('SELECT login,twitch_id,auto_clip,last_clip_at FROM streamers ORDER BY login LIMIT 30').all()).results||[];
-    const clips=(await env.DB.prepare('SELECT login,url,created_at,mode,status FROM clips ORDER BY created_at DESC LIMIT 50').all()).results||[];
+    const clips=(await env.DB.prepare('SELECT c.id,c.login,c.url,c.created_at,c.mode,c.status,sh.edit_url,sh.expires_at FROM clips c LEFT JOIN clip_share sh ON sh.id=c.id ORDER BY c.created_at DESC LIMIT 50').all()).results||[];
+    for(const c of clips) if(c.expires_at && c.expires_at < Date.now()) c.edit_url=null;
     let live=[],warning=null;
     if(connected)try { live=await scan(env,false); } catch(e) { warning=errorText(e); }
     return answer({connected,people,clips,live,warning,interval:Math.max(15,Math.min(240,Number(env.CLIP_INTERVAL_MINUTES)||20))});
+  }
+  if(path==='/api/mp4' && request.method==='GET') {
+    const clipId=url.searchParams.get('id')||'';
+    if(!/^[A-Za-z0-9_-]{8,180}$/.test(clipId)) return answer({error:'Ungueltige Clip-ID'},400);
+    const existing=await env.DB.prepare('SELECT id,login,status FROM clips WHERE id=?').bind(clipId).first();
+    if(!existing) return answer({error:'Dieser Clip ist nicht in CLIPFORGE gespeichert.'},404);
+    if(existing.status!=='ready') return answer({error:'Clip ist noch nicht erfolgreich auf Twitch verfuegbar.'},409);
+    let streamer=await env.DB.prepare('SELECT twitch_id FROM streamers WHERE login=?').bind(existing.login).first();
+    if(!streamer) {
+      const look=await twitch(env,'/users?login='+encodeURIComponent(existing.login));
+      if(!look.data?.[0]?.id) return answer({error:'Streamer nicht gefunden'},404);
+      streamer={twitch_id:look.data[0].id};
+    }
+    const me=await twitch(env,'/users');
+    const editorId=me.data?.[0]?.id;
+    if(!editorId) return answer({error:'Twitch-Konto konnte nicht bestimmt werden.'},401);
+    const qs=new URLSearchParams({broadcaster_id:streamer.twitch_id,editor_id:editorId,clip_id:clipId});
+    let download;
+    try {
+      download=await twitch(env,'/clips/downloads?'+qs);
+    }catch(e) {
+      if(/Twitch \\(401\\)|Twitch \\(403\\)/.test(String(e.message)))
+        return answer({error:'Twitch erlaubt diesen MP4-Download nur dem Kanalinhaber oder einem offiziell berechtigten Kanal-Editor. Bitte Twitch erneut verbinden, falls du bereits Editor bist.'},403);
+      throw e;
+    }
+    const asset=(download.data||[]).find(x=>x.clip_id===clipId);
+    const raw=asset?.portrait_download_url||asset?.landscape_download_url;
+    if(!raw) return answer({error:'Kein freigegebener MP4-Download fuer diesen Clip verfuegbar.'},404);
+    let assetUrl;
+    try {assetUrl=new URL(raw);}catch {return answer({error:'Twitch lieferte einen ungueltigen Download-Link'},502);}
+    if(assetUrl.protocol!=='https:' || !/(^|\\.)twitchcdn\\.net$/.test(assetUrl.hostname))
+      return answer({error:'Unerwarteter Download-Host von Twitch'},502);
+    return answer({url:assetUrl.href,format:asset.portrait_download_url?'portrait':'landscape',hint:'Twitch-Download-Link ist zeitlich begrenzt. In Safari gegebenenfalls Video gedrueckt halten und sichern.'});
   }
   if(request.method!=='POST') return answer({error:'Nicht gefunden'},404);
   originCheck(request);
