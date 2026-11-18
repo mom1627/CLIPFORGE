@@ -7,13 +7,16 @@ Die kostenlose Cloud-Version der CLIPFORGE-App liegt direkt in diesem privaten R
 - Privates iPhone-Dashboard in Safari
 - Watchlist mit bis zu 30 Twitch-Kanälen
 - Livestatus und Zuschauerzahlen
-- Twitch OAuth mit Scope `clips:edit`, automatische Token-Erneuerung
+- Twitch OAuth mit Scopes `clips:edit` und `editor:manage:clips`, automatische Token-Erneuerung
 - Manuelles Clippen während eines laufenden Streams
 - Automatisches Clippen per Cloudflare Cron (Prüfung alle 5 Minuten, voreingestellter Clip-Abstand: 20 Minuten)
 - Twitch-Clip-Links und Statusanzeige
+- Beliebte Twitch-Clips der letzten 7 Tage pro Streamer anzeigen (öffentliche Clip-Suche)
+- MP4-Download über den offiziellen Twitch-Endpunkt **nur bei bestehender Kanalinhaber-/Editor-Berechtigung**
+- Links zur Twitch-Clip-Bearbeitung bzw. zum Teilen anzeigen, soweit Twitch sie bereitstellt
 - HMAC-geschützte Sitzung, Rate-Limit für falsche Admin-Passwörter, D1-Datenbank
 
-**Noch nicht enthalten:** KI-Highlights auf Basis des Live-Videos, MP4-Download, TikTok-Upload, automatische TikTok-Veröffentlichung. Die Funktion erstellt derzeit Clips **zeitgesteuert**, nicht anhand erkannter besonders spannender Momente. Clip-Erstellung ist nur möglich, wenn Twitch beziehungsweise der Streamer sie erlaubt. Ein Twitch-Clip darf nicht automatisch auf TikTok repostet werden.
+**Aktueller Stand:** KI-Highlights auf Basis des Live-Videos, eigenständiges 9:16-Rendering, TikTok-Upload und automatische TikTok-Veröffentlichung sind **noch nicht enthalten**. Die Funktion erstellt derzeit neue Clips **zeitgesteuert**, nicht anhand erkannter besonders spannender Momente. Im Dashboard lassen sich außerdem populäre **öffentliche Clips der letzten 7 Tage** je Streamer entdecken und bei eigenen erfolgreich erstellten Clips offizielle MP4-Download-Links anfordern. **MP4-Download über die Twitch-API funktioniert nur für Kanalinhaber und offiziell eingetragene Editoren** (Scope `editor:manage:clips`). Ohne diese Twitch-Berechtigung werden keine MP4s ausgeliefert; auch die Freigabe zur Veröffentlichung auf TikTok ist separat zu beachten. Die Twitch-Oberfläche kann bei vom Streamer erlaubtem Teilen einen direkten TikTok-Export anbieten. Twitch-Links allein sind kein TikTok-Video.
 
 ## Kostenlos einrichten – alles am iPhone
 
@@ -57,9 +60,9 @@ https://clipforge-live-free.DEIN-SUBDOMAIN.workers.dev/auth/callback
 
 1. Worker-URL in **Safari** öffnen.
 2. Mit `ADMIN_PIN` anmelden.
-3. **Twitch verbinden** auswählen und `clips:edit` erlauben.
+3. **Twitch verbinden** erneut auswählen und `clips:edit` sowie `editor:manage:clips` erlauben (die zweite Berechtigung ermöglicht Downloads **nur** für Kanäle, deren Inhaber bzw. Editor du bist).
 4. Streamer zur Watchlist hinzufügen und bei Bedarf **Auto: AN** wählen.
-5. Clips unter **Erstellte Twitch-Clips** ansehen.
+5. Clips unter **Erstellte Twitch-Clips** ansehen. Dort stehen je nach Twitch-Freigabe **„MP4 anfordern“** und **„Twitch bearbeiten / teilen“** zur Verfügung. Für andere Kanäle nutze **„Clips der Woche“**, um vorhandene öffentliche Clips anzusehen; direkte TikTok-Freigabe hängt von den Einstellungen des Streamers ab.
 
 Das geplante Clipping läuft anschließend in Cloudflare weiter, auch wenn dein iPhone nicht geöffnet ist. Cron-Aufrufe sind aber nicht auf die Sekunde genau und der kostenlose Tarif hat Nutzungslimits.
 
