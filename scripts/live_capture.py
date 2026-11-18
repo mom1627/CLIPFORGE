@@ -250,6 +250,33 @@ def tiktok_draft(mp4: Path, token: str) -> str:
         raise RuntimeError(f"TikTok MP4-Transfer HTTP {exc.code}") from None
     return str(init.get("publish_id", ""))
 
+def upload_mp4_to_dashboard(mp4: Path) -> dict | None:
+    """Optional authenticated transfer to the owner's private Cloudflare R2 Worker."""
+    worker = os.getenv("CLIPFORGE_WORKER_URL", "").strip().rstrip("/")
+    secret = os.getenv("CLIPFORGE_INGEST_SECRET", "").strip()
+    if not worker or not secret:
+        return None
+    from urllib.parse import urlsplit
+    parsed = urlsplit(worker)
+    if parsed.scheme != "https" or not (parsed.hostname or "").endswith(".workers.dev"):
+        raise RuntimeError("CLIPFORGE_WORKER_URL muss eine HTTPS-Workers-Adresse sein")
+    size = mp4.stat().st_size
+    if size > 60 * 1024 * 1024:
+        raise RuntimeError("MP4 zu gross fuer den iPhone-Cloudflare-Speicher (max. 60 MB)")
+    content = mp4.read_bytes()
+    request = urllib.request.Request(worker + "/api/ingest", data=content, method="PUT",
+        headers={"Authorization": "Bearer " + secret,
+                 "X-Clip-Filename": mp4.name, "Content-Type": "video/mp4",
+                 "Content-Length": str(size)})
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response:
+            status = json.load(response)
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(f"CLIPFORGE Cloud-Upload HTTP {exc.code}") from None
+    if not status.get("ok") or status.get("filename") != mp4.name:
+        raise RuntimeError("CLIPFORGE Cloud-Upload unbestätigt")
+    return {"saved": True, "filename": mp4.name}
+
 def write_report(data: dict) -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     (OUTPUT / "report.json").write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -303,6 +330,12 @@ def main() -> int:
                   mp4_bytes=clip.stat().st_size, clip_start_seconds=start,
                   audio_score_db=energy_db, clip_length_seconds=min(clip_seconds, duration-start),
                   source=f"https://www.twitch.tv/{channel}", game_name=game, format="vertical_mp4")
+    try:
+        cloud_status = upload_mp4_to_dashboard(clip)
+        report["cloud_mp4"] = cloud_status if cloud_status is not None else {"saved": False, "reason": "not_configured"}
+    except Exception as exc:
+        report["cloud_mp4"] = {"saved": False, "reason": str(exc)}
+        print("Cloudflare-MP4-Transfer nicht erfolgreich: " + str(exc), file=sys.stderr)
     token = tiktok_access_token()
     mode = os.getenv("TIKTOK_UPLOAD_MODE", "draft").lower()
     if mode == "draft" and token and (game is not None or os.getenv("ALLOW_UNVERIFIED_GAME_UPLOAD", "false").lower() == "true"):
