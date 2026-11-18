@@ -84,7 +84,7 @@ async function refresh(){
    const live=online.get(p.login);
    return '<div class="streamer"><div class="row"><strong>'+esc(p.login)+'</strong><span class="tag '+(live?'live':'')+'">'+(live?'● LIVE · '+Number(live.viewers).toLocaleString('de-DE'):'Offline')+'</span></div><div class="actions"><button data-action="clip" data-login="'+esc(p.login)+'" '+(!live?'disabled':'')+'>Jetzt clippen</button><button class="secondary" data-action="auto" data-login="'+esc(p.login)+'">Auto: '+(p.auto_clip?'AN':'AUS')+'</button><button class="secondary" data-action="remove" data-login="'+esc(p.login)+'">Entfernen</button><a class="btn secondary" href="https://www.twitch.tv/'+encodeURIComponent(p.login)+'" target="_blank" rel="noopener noreferrer">Auf Twitch prüfen</a></div></div>';
   }).join(''):'<p class="muted mini">Noch keine Streamer in der Watchlist.</p>';
-  $('clips').innerHTML=s.clips.length?s.clips.map(c=>'<div class="clip"><strong>'+esc(c.login)+'</strong> · '+new Date(c.created_at).toLocaleString('de-DE')+' · '+esc(c.status)+'<div><a href="'+esc(c.url)+'" target="_blank" rel="noopener noreferrer">Auf Twitch ansehen</a></div></div>').join(''):'Noch keine Clips vorhanden';
+  $('clips').innerHTML=s.clips.length?s.clips.map(c=>'<div class="clip"><strong>'+esc(c.login)+'</strong> · '+new Date(c.created_at).toLocaleString('de-DE')+' · '+esc(c.status)+'<div class="actions"><a class="btn secondary" href="'+esc(c.url)+'" target="_blank" rel="noopener noreferrer">Auf Twitch ansehen</a>'+(c.edit_url?'<a class="btn secondary" href="'+esc(c.edit_url)+'" target="_blank" rel="noopener noreferrer">Twitch bearbeiten / teilen</a>':'')+(c.status==='ready'?'<button data-clip-download="'+esc(c.id)+'">MP4 anfordern</button>':'')+'</div></div>').join(''):'Noch keine Clips vorhanden';
  }catch(e){if(e.message==='Nicht angemeldet'){$('login').classList.remove('hide');$('dashboard').classList.add('hide')}else notice(e.message,true)}
 }
 async function add(name){
@@ -94,6 +94,16 @@ async function add(name){
 $('loginForm').onsubmit=async e=>{e.preventDefault();try{await api('/login','POST',{pin:$('password').value});$('password').value='';notice('Angemeldet');refresh()}catch(x){notice(x.message,true)}};
 $('addForm').onsubmit=e=>{e.preventDefault();const n=$('username').value.trim();$('username').value='';add(n)};
 $('quick').onclick=e=>{const b=e.target.closest('button');if(b)add(b.dataset.name)};
+$('clips').onclick=async e=>{
+ const b=e.target.closest('button[data-clip-download]');if(!b)return;
+ b.disabled=true;notice('Pruefe offizielle Twitch-Downloadberechtigung …');
+ try{
+   const result=await api('/api/mp4?id='+encodeURIComponent(b.dataset.clipDownload));
+   notice('MP4-Link verfuegbar ('+(result.format==='portrait'?'Hochformat':'Querformat')+'). Er wird in einem neuen Tab geoeffnet.');
+   const a=document.createElement('a');a.href=result.url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='MP4 in Twitch CDN oeffnen';a.className='btn';a.style.marginTop='8px';
+   $('notice').appendChild(document.createTextNode(' '));$('notice').appendChild(a);
+ }catch(ex){notice(ex.message,true)}finally{b.disabled=false}
+};
 $('refresh').onclick=()=>refresh();
 $('logout').onclick=async()=>{try{await api('/logout','POST');refresh()}catch(e){notice(e.message,true)}};
 $('streamers').onclick=async e=>{
