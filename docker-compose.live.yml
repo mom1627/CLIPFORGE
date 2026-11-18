@@ -1,0 +1,15 @@
+# Production runtime only: deploy on a free/paid VM whose terms permit automated video processing.
+# Do not put any credentials into this file or the GitHub repository.
+services:
+  recorder:
+    build:
+      context: .
+      dockerfile: Dockerfile.live
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env.live
+    volumes:
+      - ./clipforge-data:/data
+    mem_limit: 2g
+    cpus: 2.0
