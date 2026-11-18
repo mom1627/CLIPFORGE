@@ -135,6 +135,26 @@ docker compose -f docker-compose.live.yml up -d --build
 
 MP4s werden unter `clipforge-data/clips/` abgelegt. Der Daemon löscht ältere Videos nach 7 Tagen bzw. ab 2 GB Speicherbelegung. **Ein sicherer MP4-Download direkt im Cloudflare-iPhone-Dashboard ist noch nicht integriert.** Dafür ist eine zusätzliche private Videodatei-Anbindung nötig.
 
+### Privater MP4-Download in der iPhone-Web-App (Cloudflare R2, optional)
+
+Der Cloudflare-Worker enthält nun zwei neue, gegen unbefugten Zugriff geschützte Funktionen:
+
+- `PUT /api/ingest`: nimmt MP4-Dateien nur mit einem 32+ Zeichen langen gemeinsamen Upload-Secret und passendem Dateinamen an und speichert sie in R2 (max. 60 MB).
+- `GET /api/videos` und `GET /api/videos/{name}`: zeigen angemeldeten CLIPFORGE-Nutzern die Liste und liefern eine MP4 als Download, die direkt in Safari gesichert werden kann.
+
+**Derzeit noch nicht aktiv:** Der R2-Bucket und das Secret müssen zuerst eingerichtet werden. Dafür in Cloudflare `Storage & Databases → R2` den privaten Bucket `clipforge-mp4` erstellen. **Achtung:** Die Aktivierung von R2 kann eine Zahlungsmethode verlangen; es gibt ein Freikontingent, aber kein garantiertes 0-€-Hosting über dessen Limits hinaus.
+
+Nach Bucket-Erstellung das Worker-Binding mit Name `CLIPS_R2` auf `clipforge-mp4` legen und in der tatsächlich deployten `wrangler.toml` folgende Bindung ergänzen, damit das nächste GitHub-Deployment sie nicht verliert:
+
+```toml
+[[r2_buckets]]
+binding = "CLIPS_R2"
+bucket_name = "clipforge-mp4"
+```
+
+Als Cloudflare-Worker-Secret `CLIPFORGE_INGEST_SECRET` hinzufügen (einen eigenen zufälligen Wert mit 32+ Zeichen wählen) und **denselben Wert ausschließlich auf dem privaten Videorecorder** in `.env.live` eintragen. Dazu `CLIPFORGE_WORKER_URL=https://clipforge-live-free.hanoura1000.workers.dev` setzen. Secrets gehören nicht in GitHub. Nach erfolgreicher Übertragung erscheint das MP4 im Abschnitt `MP4-Clips & TikTok` deiner iPhone-Webseite. Lege in R2 eine Löschregel nach 7 Tagen fest, um den Speicherverbrauch zu begrenzen.
+
+
 ### TikTok richtig anschließen
 
 Der Recorder verwendet den offiziellen TikTok Content Posting API-Endpunkt `video.upload`. Du brauchst eine eigene TikTok-Developer-Anwendung und die Autorisierung des **gewünschten TikTok-Kontos**. Für dauerhafte Nutzung sind `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET` und `TIKTOK_REFRESH_TOKEN` erforderlich; ein kurzlebiger `TIKTOK_ACCESS_TOKEN` eignet sich nur für Tests. Diese Werte gehören nur in die Server-Konfiguration, niemals in GitHub.
