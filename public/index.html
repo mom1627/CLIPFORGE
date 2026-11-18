@@ -57,10 +57,14 @@ footer{font-size:12px;color:#9aacca;line-height:1.6;margin-top:22px}
 <div id="streamers" style="margin-top:12px">Noch keine Streamer</div>
 <div id="discovered" class="hide panel" aria-live="polite"></div>
 </section>
+<section class="panel"><h2>MP4-Clips &amp; TikTok</h2>
+<p class="muted mini">Neue Pipeline im GitHub-Projekt: Streamlink nimmt freigegebene öffentliche Liveszenen auf, FFmpeg erstellt vertikale MP4s, TikTok kann Entwürfe empfangen. Der Video-Recorder braucht einen separaten Cloud-Server und ist noch nicht produktiv gestartet.</p>
+<div class="actions"><a class="btn secondary" href="https://github.com/mom1627/CLIPFORGE/actions" target="_blank" rel="noopener noreferrer">Video-Pipeline &amp; Tests</a><a class="btn secondary" href="https://github.com/mom1627/CLIPFORGE#neu-live-aufnahme--916-mp4--tiktok-entwurf-separater-videorecorder" target="_blank" rel="noopener noreferrer">Einrichtung</a></div>
+</section>
 <section class="panel"><h2>Erstellte Twitch-Clips</h2><div id="clips" class="muted mini">Noch keine Clips vorhanden</div></section>
 <div class="helper mini"><strong>Was automatisch passiert:</strong> Der Cloudflare-Worker prüft alle fünf Minuten, welche Streamer live sind. Wenn Auto-Clips aktiviert sind, kann er im eingestellten Abstand Twitch-Clips anfordern. Er erkennt dabei noch keine spektakulären Szenen mit KI.</div>
 </div>
-<footer>Die Clips bleiben auf Twitch. Downloads, KI-Highlight-Erkennung und TikTok-Reuploads sind nicht enthalten. Für fremde Videos gelten die Rechte der jeweiligen Creator.</footer>
+<footer>Die Twitch-Web-App selbst speichert keine MP4s. Ein separater Videorecorder ist im GitHub-Projekt vorbereitet. Für TikTok-Reuploads müssen die Nutzungsrechte aller Beteiligten vorliegen.</footer>
 </main>
 <script>
 const $=id=>document.getElementById(id);
