@@ -249,6 +249,24 @@ async function scan(env,auto=false) {
   const people=(await env.DB.prepare('SELECT * FROM streamers ORDER BY login LIMIT 30').all()).results||[];
   const active=await streams(env,people), now=Date.now();
   if(auto) try { await verifyClips(env,now); } catch(e) { console.error('Clip verification:',errorText(e)); }
+
+  if(auto && tiktokConfigured(env)) try {
+    const settings=await env.DB.prepare('SELECT auto_drafts FROM publishing_settings WHERE id=1').first();
+    const tiktok=await env.DB.prepare('SELECT id FROM tiktok_auth WHERE id=1').first();
+    if(settings?.auto_drafts && tiktok){
+      const midnight=Date.parse(new Date().toISOString().slice(0,10)+'T00:00:00.000Z');
+      const today=await env.DB.prepare('SELECT COUNT(*) AS count FROM tiktok_drafts WHERE created_at>=?')
+        .bind(midnight).first();
+      if(Number(today?.count||0)<2){
+        const pending=await env.DB.prepare("SELECT c.id FROM clips c JOIN streamers s ON c.login=s.login LEFT JOIN tiktok_drafts d ON d.clip_id=c.id WHERE c.status='ready' AND c.mode='auto' AND s.auto_clip=1 AND d.clip_id IS NULL ORDER BY c.created_at DESC LIMIT 1").first();
+        if(pending){
+          try{await submitTikTokDraft(env,pending.id);}
+          catch(e){console.error('TikTok-Entwurf:',errorText(e));}
+        }
+      }
+    }
+  }catch(e){console.error('TikTok-Automation:',errorText(e));}
+
   const interval=Math.max(15,Math.min(240,Number(env.CLIP_INTERVAL_MINUTES)||20))*60000;
   const list=[];
   for(const person of people) {
@@ -311,6 +329,32 @@ async function route(request,env) {
   }
   if(path==='/login' && request.method==='POST') return login(request,env);
   if(!await loggedIn(request,env)) return answer({error:'Nicht angemeldet'},401);
+
+  if(path==='/auth/tiktok' && request.method==='GET') {
+    if(!tiktokConfigured(env))return answer({error:'TikTok App noch nicht konfiguriert. Client-Key und Client-Secret als Cloudflare-Secrets eintragen.'},503);
+    const state='tt_'+nonce();
+    await env.DB.prepare('INSERT INTO oauth_states (state,created_at) VALUES(?,?)')
+      .bind(state,Date.now()).run();
+    const redirect=url.origin+'/auth/tiktok/callback';
+    const qs=new URLSearchParams({client_key:env.TIKTOK_CLIENT_KEY,scope:'video.upload',
+      response_type:'code',redirect_uri:redirect,state});
+    return Response.redirect('https://www.tiktok.com/v2/auth/authorize/?'+qs,302);
+  }
+  if(path==='/auth/tiktok/callback' && request.method==='GET') {
+    if(!tiktokConfigured(env))return answer({error:'TikTok App ist nicht konfiguriert.'},503);
+    const state=url.searchParams.get('state')||'',code=url.searchParams.get('code')||'';
+    if(!state.startsWith('tt_')||!code)return answer({error:'TikTok-Anmeldung abgebrochen oder abgelehnt.'},400);
+    const saved=await env.DB.prepare('SELECT state,created_at FROM oauth_states WHERE state=?').bind(state).first();
+    if(!saved || Date.now()-saved.created_at>600000)return answer({error:'TikTok OAuth-State nicht gueltig.'},403);
+    await env.DB.prepare('DELETE FROM oauth_states WHERE state=?').bind(state).run();
+    const token=await tokenExchangeTikTok(env,{grant_type:'authorization_code',code,
+      redirect_uri:url.origin+'/auth/tiktok/callback'});
+    await saveTikTokAuth(env,token);
+    // New TikTok account needs opt-in; never assume the preexisting marketing profile.
+    await env.DB.prepare('INSERT OR REPLACE INTO publishing_settings (id,auto_drafts) VALUES(1,0)').run();
+    return Response.redirect(url.origin+'/?tiktok_connected=1',302);
+  }
+
   if(path==='/api/videos' && request.method==='GET') {
     if(!env.CLIPS_R2) return answer({configured:false,videos:[]});
     const videos=(await env.DB.prepare('SELECT id,created_at,size_bytes FROM rendered_mp4 ORDER BY created_at DESC LIMIT 80').all()).results||[];
@@ -374,7 +418,15 @@ async function route(request,env) {
     for(const c of clips) if(c.expires_at && c.expires_at < Date.now()) c.edit_url=null;
     let live=[],warning=null;
     if(connected)try { live=await scan(env,false); } catch(e) { warning=errorText(e); }
-    return answer({connected,people,clips,live,warning,interval:Math.max(15,Math.min(240,Number(env.CLIP_INTERVAL_MINUTES)||20))});
+    const tiktok=await env.DB.prepare('SELECT open_id,scopes FROM tiktok_auth WHERE id=1').first();
+    const settings=await env.DB.prepare('SELECT auto_drafts FROM publishing_settings WHERE id=1').first();
+    const drafts=(await env.DB.prepare('SELECT clip_id,state,created_at,publish_id,last_error FROM tiktok_drafts ORDER BY created_at DESC LIMIT 50').all()).results||[];
+    return answer({connected,people,clips,live,warning,
+      interval:Math.max(15,Math.min(240,Number(env.CLIP_INTERVAL_MINUTES)||20)),
+      tiktok:{configured:tiktokConfigured(env),connected:!!tiktok,
+        account_ref:tiktok?.open_id?String(tiktok.open_id).slice(0,6)+'…':null,
+        auto_drafts:!!settings?.auto_drafts},
+      drafts});
   }
   if(path==='/api/discover' && request.method==='GET') {
     const login=String(url.searchParams.get('login')||'').trim().toLowerCase();
@@ -425,6 +477,19 @@ async function route(request,env) {
   if(request.method!=='POST') return answer({error:'Nicht gefunden'},404);
   originCheck(request);
   const input=await request.json().catch(()=>({}));
+  if(path==='/api/tiktok/draft') {
+    const clipId=String(input.clip_id||'');
+    if(!/^[A-Za-z0-9_-]{8,180}$/.test(clipId))return answer({error:'Ungueltige Clip-ID'},400);
+    return answer(await submitTikTokDraft(env,clipId),202);
+  }
+  if(path==='/api/tiktok/auto') {
+    if(!await env.DB.prepare('SELECT id FROM tiktok_auth WHERE id=1').first())
+      return answer({error:'TikTok zuerst verbinden, um die Zieladresse zu bestaetigen.'},409);
+    const enable=input.enable===true;
+    await env.DB.prepare('INSERT INTO publishing_settings (id,auto_drafts) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET auto_drafts=excluded.auto_drafts')
+      .bind(enable?1:0).run();
+    return answer({ok:true,enabled:enable,notice:enable?'Automatisch nur TikTok-Entwuerfe, keine oeffentlichen Posts.':'Auto-Entwuerfe deaktiviert.'});
+  }
   let name=String(input.login||'').trim().replace(/^@/,'').toLowerCase();
   if(!validateName(name)) return answer({error:'Ungueltiger Twitch-Name'},400);
   if(path==='/api/add') {
