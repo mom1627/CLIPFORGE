@@ -1,3 +1,12 @@
+# CLIPFORGE – Live-Monitor (Stand 18.11.2026, getestet)
+
+**Das funktioniert und wurde mit echtem Livestream geprüft:** Der Workflow *CLIPFORGE – Live-Monitor* (`.github/workflows/monitor.yml`) läuft kostenlos auf GitHub Actions, nimmt einen freigegebenen Twitch-Stream laufend auf, erkennt Lautstärke-Spitzen (Highlights) **während der Stream live ist**, rendert 9:16-MP4s (720x1280, H.264) und hängt sie an das GitHub-Release **„clips“** an. Auf dem iPhone: GitHub-App/Safari -> Repository -> Releases -> clips -> MP4 antippen.
+
+- Start: Actions -> *CLIPFORGE – Live-Monitor* -> Run workflow (Minuten, dB-Schwelle). Standard 330 Min., Schwelle 7 dB (kleiner = mehr Clips).
+- Geplante 6-Stunden-Läufe starten nur bei **öffentlichem** Repo (dort unbegrenzte Minuten). Privat: nur 2000 Min./Monat.
+- Spielfilter (GTA 6) greift nur, wenn die Secrets `TWITCH_CLIENT_ID` und `TWITCH_CLIENT_SECRET` als GitHub-Secrets gesetzt sind; sonst wird jeder freigegebene Live-Streamer aufgenommen.
+- Highlight-Erkennung = nur Audio (laut/jubeln), keine Bild-KI.
+
 # CLIPFORGE Free – Twitch Live-Clipper fürs iPhone
 
 ## Sofort testbarer 0-€-Weg ohne PC: Google Colab (iPhone)
