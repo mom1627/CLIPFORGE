@@ -209,6 +209,19 @@ async function route(request,env) {
     if(connected)try { live=await scan(env,false); } catch(e) { warning=errorText(e); }
     return answer({connected,people,clips,live,warning,interval:Math.max(15,Math.min(240,Number(env.CLIP_INTERVAL_MINUTES)||20))});
   }
+  if(path==='/api/discover' && request.method==='GET') {
+    const login=String(url.searchParams.get('login')||'').trim().toLowerCase();
+    if(!validateName(login)) return answer({error:'Ungueltiger Twitch-Name'},400);
+    let person=await env.DB.prepare('SELECT twitch_id FROM streamers WHERE login=?').bind(login).first();
+    if(!person) return answer({error:'Zuerst Streamer zur Watchlist hinzufuegen'},404);
+    const periodStart=new Date(Date.now()-7*86400000).toISOString();
+    const qs=new URLSearchParams({broadcaster_id:person.twitch_id,started_at:periodStart,first:'15'});
+    const result=await twitch(env,'/clips?'+qs);
+    return answer({login,period:'last_7_days',clips:(result.data||[]).map(c=>({
+      id:c.id,url:c.url,title:c.title,created_at:c.created_at,
+      views:c.view_count,duration:c.duration,game_id:c.game_id
+    })).filter(c=>typeof c.url==='string' && c.url.startsWith('https://clips.twitch.tv/'))});
+  }
   if(path==='/api/mp4' && request.method==='GET') {
     const clipId=url.searchParams.get('id')||'';
     if(!/^[A-Za-z0-9_-]{8,180}$/.test(clipId)) return answer({error:'Ungueltige Clip-ID'},400);
