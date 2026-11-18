@@ -93,3 +93,60 @@ Für Live-Abfragen sind lokale D1-Bindings und passende Secrets erforderlich. Be
 
 Twitch-Dokumentation: https://dev.twitch.tv/docs/api/clips/  
 Cloudflare Cron: https://developers.cloudflare.com/workers/configuration/cron-triggers/
+
+
+---
+
+## NEU: Live-Aufnahme → 9:16-MP4 → TikTok-Entwurf (separater Videorecorder)
+
+Diese **zweite Komponente** erweitert die vorhandene Cloudflare-Web-App. Der kostenlose Cloudflare Worker kann keine aufwendige Videokodierung ausführen. Der bisherige Twitch-403-Fehler betrifft die Twitch-Clip-API. Mit ausdrücklicher Zustimmung und für öffentlich zugängliche Streams kann der neue Recorder alternativ mit Streamlink aufnehmen, ohne auf die Twitch-Clip-Download-API angewiesen zu sein. Er hebt **keine privaten oder DRM-Schutzmechanismen** auf.
+
+**Stand:** Produktionscode vorbereitet, **noch kein dauerhafter Cloud-Server verbunden**. Es wurde noch kein echter Twitch-Stream durch diesen Recorder aufgenommen und kein Video an TikTok übertragen.
+
+### Was der Recorder kann
+
+1. Prüft die in `APPROVED_CHANNELS` explizit freigegebenen Streamer.
+2. Prüft optional über die offizielle Twitch-API, ob sie `Grand Theft Auto VI` streamen. Ohne API-Zugang bleibt die Kategorie unbestätigt und der automatische TikTok-Upload wird zurückgehalten.
+3. Nimmt pro Durchlauf einen kurzen Live-Abschnitt auf (standardmäßig 100 Sekunden).
+4. Wählt ein circa 38 Sekunden langes Fenster anhand durchschnittlicher Audio-Lautstärke; das ist **noch keine inhaltliche KI-Erkennung**.
+5. Erstellt mit FFmpeg ein H.264/AAC-MP4 im Hochformat 9:16 (standardmäßig 720 × 1280), mit vollständig sichtbarem Spielbild und unscharfem Hintergrund.
+6. Speichert die MP4 auf dem ausführenden Server. Optional überträgt der offizielle TikTok-Upload-Adapter sie als **Inbox-Entwurf** auf das verbundene TikTok-Konto. Den Entwurf musst du in TikTok noch veröffentlichen.
+7. Kann TikTok-Zugangstokens auf einem persistenten Server erneuern und den rotierenden Refresh-Token sicher lokal speichern.
+
+### Entwicklungsprüfungen auf GitHub
+
+`.github/workflows/live-capture.yml` ist ausschließlich ein manuell ausgelöster **Entwicklungs-/Funktionstest**. Ein separater CI-Workflow prüft Python und das MP4-Rendering mit einem **synthetischen Testvideo**. GitHub Actions wird **nicht** als Dauer-Video-Server verwendet, weil das mit den [GitHub Actions-Nutzungsbedingungen](https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features) unvereinbar sein kann.
+
+### Dauerbetrieb ohne deinen eigenen PC
+
+Benötigt wird eine Linux-VM mit ungefähr 2 CPU-Kernen, 2 GB RAM, freiem Speicher und erlaubtem Docker-Betrieb. Ein Always-Free-VM-Angebot kann in Frage kommen, ist aber abhängig von Konto-, Zahlungs- und Kapazitätsvoraussetzungen. **Ein solches Hosting ist noch nicht angeschlossen**, daher läuft der MP4-Recorder noch nicht automatisch.
+
+Auf dem Server:
+
+```bash
+git clone https://github.com/mom1627/CLIPFORGE.git
+cd CLIPFORGE
+cp .env.live.example .env.live
+# .env.live privat bearbeiten
+mkdir -p clipforge-data
+sudo chown -R 10001:10001 clipforge-data
+docker compose -f docker-compose.live.yml up -d --build
+```
+
+MP4s werden unter `clipforge-data/clips/` abgelegt. Der Daemon löscht ältere Videos nach 7 Tagen bzw. ab 2 GB Speicherbelegung. **Ein sicherer MP4-Download direkt im Cloudflare-iPhone-Dashboard ist noch nicht integriert.** Dafür ist eine zusätzliche private Videodatei-Anbindung nötig.
+
+### TikTok richtig anschließen
+
+Der Recorder verwendet den offiziellen TikTok Content Posting API-Endpunkt `video.upload`. Du brauchst eine eigene TikTok-Developer-Anwendung und die Autorisierung des **gewünschten TikTok-Kontos**. Für dauerhafte Nutzung sind `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET` und `TIKTOK_REFRESH_TOKEN` erforderlich; ein kurzlebiger `TIKTOK_ACCESS_TOKEN` eignet sich nur für Tests. Diese Werte gehören nur in die Server-Konfiguration, niemals in GitHub.
+
+**Inbox-Entwurf ist noch kein öffentlicher Post.** TikTok verlangt, dass du den Entwurf in der TikTok-App abschließend bearbeitest und veröffentlichst. Für vollautomatische öffentliche Posts ist eine geprüfte TikTok-Anwendung mit `video.publish`, korrekter Privatsphäre-Auswahl und Nutzereinwilligung nötig; das ist hier **noch nicht implementiert**.
+
+Ein bereits an anderen Diensten angeschlossenes TikTok-Konto wird nicht automatisch verwendet. So landen GTA-Clips nicht versehentlich im falschen Markenprofil.
+
+### Grenzen und Rechte
+
+- Für fremde Streams sind Freigaben zum **Aufzeichnen, Bearbeiten und Wiederveröffentlichen** erforderlich; Twitch-Editorrechte und eine vertragliche Nutzungserlaubnis sind nicht dasselbe.
+- Ein nicht öffentlich zugänglicher oder technisch gesperrter Stream wird nicht umgangen.
+- Kurze Aufnahmen verpassen möglicherweise die Highlights, die außerhalb des Aufnahmefensters stattfinden.
+- Der Daemon verarbeitet standardmäßig höchstens acht Clips pro Tag, mit zwei Stunden Abstand. Ein kostenloser 24/7-Dienst ist nicht garantiert.
+- Für verwendete Musik und andere enthaltene Drittinhalte können weitere Rechte erforderlich sein.
