@@ -1,0 +1,61 @@
+name: CLIPFORGE – Live-Stream zu TikTok-MP4
+on:
+  workflow_dispatch:
+    inputs:
+      streamer:
+        description: "Streamer aus der freigegebenen Liste (leer = ersten Live-Streamer wählen)"
+        required: false
+        type: string
+      capture_seconds:
+        description: "Aufnahmelänge (45–130 Sekunden)"
+        required: false
+        default: "100"
+        type: string
+  schedule:
+    # Im Gratis-Modus maximal ein kurzer Mitschnitt alle zwei Stunden.
+    # Läuft erst, nachdem LIVE_CAPTURE_ENABLED=true als Repository-Variable gesetzt wurde.
+    - cron: "17 */2 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clipforge-live-capture
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    if: github.event_name == 'workflow_dispatch' || vars.LIVE_CAPTURE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      APPROVED_CHANNELS: ${{ vars.APPROVED_CHANNELS || 'kaicenat,xqc,montanablack88,trymacs,papaplatte,caseoh_' }}
+      TARGET_STREAMER: ${{ inputs.streamer || '' }}
+      CAPTURE_SECONDS: ${{ inputs.capture_seconds || '100' }}
+      CLIP_SECONDS: "38"
+      VIDEO_WIDTH: "720"
+      TIKTOK_ACCESS_TOKEN: ${{ secrets.TIKTOK_ACCESS_TOKEN }}
+      TIKTOK_UPLOAD_MODE: "draft"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Streamlink installieren
+        run: |
+          python -m pip install --disable-pip-version-check --quiet "streamlink>=8,<9"
+          ffmpeg -version | head -n 1
+      - name: Lokale Tests
+        run: python -m unittest discover -s tests -p 'test_capture.py' -v
+      - name: Live-Aufnahme, Highlight und MP4
+        run: python scripts/live_capture.py
+      - name: Video und Statusbericht auf GitHub bereitstellen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clipforge-live-${{ github.run_id }}
+          path: output/*
+          if-no-files-found: warn
+          retention-days: 5
