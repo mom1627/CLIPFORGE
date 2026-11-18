@@ -1,0 +1,14 @@
+name = "clipforge-live-free"
+main = "src/index.js"
+compatibility_date = "2026-11-18"
+
+[vars]
+CLIP_INTERVAL_MINUTES = "20"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "clipforge-live"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
