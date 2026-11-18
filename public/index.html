@@ -40,6 +40,16 @@ footer{font-size:12px;color:#9aacca;line-height:1.6;margin-top:22px}
 <div class="actions"><a class="btn" href="/auth/twitch">Twitch verbinden</a><button class="secondary" id="refresh">Aktualisieren</button></div>
 </section>
 <section class="panel">
+<h2>TikTok-Entwürfe (0 € ohne Videorechner)</h2>
+<div id="tiktokStatus" class="muted mini">Lade TikTok-Verbindung …</div>
+<div class="actions">
+<a id="tiktokConnect" class="btn secondary" href="/auth/tiktok">TikTok verbinden</a>
+<button id="tiktokAuto" class="secondary" disabled>Auto-Entwürfe: AUS</button>
+</div>
+<p class="muted mini">Fertig erstellte Twitch-Clips können bei gültiger Kanal-Editorfreigabe an das verbundene TikTok-Konto übertragen werden. Kein öffentliches Posten: Entwürfe erscheinen in TikTok zur Freigabe. Maximal 2 automatische Entwürfe täglich.</p>
+<div id="tiktokDrafts" class="muted mini"></div>
+</section>
+<section class="panel">
 <h2>Live-Watchlist</h2>
 <p class="muted mini">Du kannst bis zu 30 Streamer beobachten. Automatisches Clippen ist für jeden Kanal separat aktivierbar.</p>
 <form id="addForm" class="actions">
@@ -83,6 +93,21 @@ async function refresh(){
   const s=await api('/api/state');
   $('login').classList.add('hide');$('dashboard').classList.remove('hide');
   $('connected').textContent=s.connected?'Twitch verbunden · Automatische Clips höchstens alle '+s.interval+' Minuten je Streamer':'Noch kein Twitch-Konto verbunden';
+
+  const tt=s.tiktok||{configured:false,connected:false,auto_drafts:false};
+  $('tiktokStatus').textContent=!tt.configured
+    ? 'Noch keine TikTok-Developer-App verbunden (Client-Key + Secret fehlen in Cloudflare).'
+    : tt.connected ? 'TikTok verbunden (Konto-ID '+(tt.account_ref||'hinterlegt')+').'
+    : 'TikTok-Developer-App vorbereitet. Bitte das richtige TikTok-Konto anmelden.';
+  $('tiktokConnect').classList.toggle('hide',!tt.configured);
+  $('tiktokAuto').disabled=!tt.connected;
+  $('tiktokAuto').textContent='Auto-Entwürfe: '+(tt.auto_drafts?'AN':'AUS');
+  $('tiktokAuto').dataset.on=String(!!tt.auto_drafts);
+  $('tiktokDrafts').innerHTML=(s.drafts||[]).length
+    ? '<p>Letzte TikTok-Übertragungen:</p>'+(s.drafts||[]).slice(0,10).map(d=>
+        '<div class="clip">'+esc(d.clip_id)+' · '+esc(d.state)+(d.last_error?' · '+esc(d.last_error):'')+'</div>').join('')
+    : '<p>Noch keine TikTok-Entwürfe gesendet.</p>';
+
   if(s.warning)notice(s.warning,true);
   try {
    const m=await api('/api/videos');
@@ -96,7 +121,7 @@ async function refresh(){
    const live=online.get(p.login);
    return '<div class="streamer"><div class="row"><strong>'+esc(p.login)+'</strong><span class="tag '+(live?'live':'')+'">'+(live?'● LIVE · '+Number(live.viewers).toLocaleString('de-DE'):'Offline')+'</span></div><div class="actions"><button data-action="clip" data-login="'+esc(p.login)+'" '+(!live?'disabled':'')+'>Jetzt clippen</button><button class="secondary" data-action="auto" data-login="'+esc(p.login)+'">Auto: '+(p.auto_clip?'AN':'AUS')+'</button><button class="secondary" data-action="discover" data-login="'+esc(p.login)+'">Clips der Woche</button><button class="secondary" data-action="remove" data-login="'+esc(p.login)+'">Entfernen</button><a class="btn secondary" href="https://www.twitch.tv/'+encodeURIComponent(p.login)+'" target="_blank" rel="noopener noreferrer">Auf Twitch prüfen</a></div></div>';
   }).join(''):'<p class="muted mini">Noch keine Streamer in der Watchlist.</p>';
-  $('clips').innerHTML=s.clips.length?s.clips.map(c=>'<div class="clip"><strong>'+esc(c.login)+'</strong> · '+new Date(c.created_at).toLocaleString('de-DE')+' · '+esc(c.status)+'<div class="actions"><a class="btn secondary" href="'+esc(c.url)+'" target="_blank" rel="noopener noreferrer">Auf Twitch ansehen</a>'+(c.edit_url?'<a class="btn secondary" href="'+esc(c.edit_url)+'" target="_blank" rel="noopener noreferrer">Twitch bearbeiten / teilen</a>':'')+(c.status==='ready'?'<button data-clip-download="'+esc(c.id)+'">MP4 anfordern</button>':'')+'</div></div>').join(''):'Noch keine Clips vorhanden';
+  $('clips').innerHTML=s.clips.length?s.clips.map(c=>'<div class="clip"><strong>'+esc(c.login)+'</strong> · '+new Date(c.created_at).toLocaleString('de-DE')+' · '+esc(c.status)+'<div class="actions"><a class="btn secondary" href="'+esc(c.url)+'" target="_blank" rel="noopener noreferrer">Auf Twitch ansehen</a>'+(c.edit_url?'<a class="btn secondary" href="'+esc(c.edit_url)+'" target="_blank" rel="noopener noreferrer">Twitch bearbeiten / teilen</a>':'')+(c.status==='ready'?'<button data-clip-download="'+esc(c.id)+'">MP4 anfordern</button><button class="secondary" data-tiktok-draft="'+esc(c.id)+'">An TikTok als Entwurf</button>':'')+'</div></div>').join(''):'Noch keine Clips vorhanden';
  }catch(e){if(e.message==='Nicht angemeldet'){$('login').classList.remove('hide');$('dashboard').classList.add('hide')}else notice(e.message,true)}
 }
 async function add(name){
@@ -107,7 +132,18 @@ $('loginForm').onsubmit=async e=>{e.preventDefault();try{await api('/login','POS
 $('addForm').onsubmit=e=>{e.preventDefault();const n=$('username').value.trim();$('username').value='';add(n)};
 $('quick').onclick=e=>{const b=e.target.closest('button');if(b)add(b.dataset.name)};
 $('clips').onclick=async e=>{
- const b=e.target.closest('button[data-clip-download]');if(!b)return;
+ const b=e.target.closest('button[data-clip-download],button[data-tiktok-draft]');if(!b)return;
+ if(b.dataset.tiktokDraft){
+   b.disabled=true;
+   notice('Twitch-MP4 wird sicher an TikTok uebertragen …');
+   try{
+     const outcome=await api('/api/tiktok/draft','POST',{clip_id:b.dataset.tiktokDraft});
+     notice(outcome.message||'TikTok-Entwurf uebertragen. Bitte in TikTok fertigstellen.');
+     await refresh();
+   }catch(ex){notice(ex.message,true)}
+   finally{b.disabled=false}
+   return;
+ }
  b.disabled=true;notice('Pruefe offizielle Twitch-Downloadberechtigung …');
  try{
    const result=await api('/api/mp4?id='+encodeURIComponent(b.dataset.clipDownload));
@@ -115,6 +151,13 @@ $('clips').onclick=async e=>{
    const a=document.createElement('a');a.href=result.url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='MP4 in Twitch CDN oeffnen';a.className='btn';a.style.marginTop='8px';
    $('notice').appendChild(document.createTextNode(' '));$('notice').appendChild(a);
  }catch(ex){notice(ex.message,true)}finally{b.disabled=false}
+};
+$('tiktokAuto').onclick=async()=>{
+ if($('tiktokAuto').disabled)return;
+ const next=$('tiktokAuto').dataset.on!=='true';
+ if(next && !window.confirm('Automatische TikTok-Entwuerfe aktivieren? CLIPFORGE sendet nur autorisierte automatische Twitch-Clips. Maximal 2 pro Tag; keine oeffentlichen TikTok-Posts.'))return;
+ try{const result=await api('/api/tiktok/auto','POST',{enable:next});notice(result.notice);await refresh()}
+ catch(e){notice(e.message,true)}
 };
 $('refresh').onclick=()=>refresh();
 $('logout').onclick=async()=>{try{await api('/logout','POST');refresh()}catch(e){notice(e.message,true)}};
