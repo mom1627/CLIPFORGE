@@ -54,6 +54,33 @@ def available(channel: str) -> bool:
     except (subprocess.TimeoutExpired, OSError):
         return False
 
+def twitch_game(channel: str) -> str | None:
+    """Read current game via official Twitch Helix when API credentials are provided.
+    None means game could not be verified; empty string means offline."""
+    client_id = os.getenv("TWITCH_CLIENT_ID", "")
+    client_secret = os.getenv("TWITCH_CLIENT_SECRET", "")
+    if not client_id or not client_secret:
+        return None
+    from urllib.parse import urlencode
+    form = urlencode({"client_id": client_id, "client_secret": client_secret,
+                     "grant_type": "client_credentials"}).encode()
+    try:
+        request = urllib.request.Request("https://id.twitch.tv/oauth2/token", data=form,
+                                         method="POST")
+        with urllib.request.urlopen(request, timeout=15) as resp:
+            token = json.load(resp).get("access_token", "")
+        if not token:
+            return None
+        request = urllib.request.Request(
+            "https://api.twitch.tv/helix/streams?" + urlencode({"user_login": channel}),
+            headers={"Authorization": "Bearer " + token, "Client-Id": client_id})
+        with urllib.request.urlopen(request, timeout=15) as resp:
+            payload = json.load(resp)
+        streams = payload.get("data", [])
+        return streams[0].get("game_name", "") if streams else ""
+    except (urllib.error.URLError, ValueError, TimeoutError):
+        return None
+
 def capture(channel: str, seconds: int, target: Path) -> None:
     """Streamlink stdout -> ffmpeg, with hard timeouts and process cleanup."""
     source = subprocess.Popen(
@@ -207,6 +234,15 @@ def main() -> int:
         print("Keiner der freigegebenen Kanäle ist gerade über Streamlink erreichbar.")
         write_report(report)
         return 0
+    game = twitch_game(channel)
+    allowed_games = [g.strip().lower() for g in os.getenv("ALLOWED_GAMES", "Grand Theft Auto VI").split(",") if g.strip()]
+    if game is not None and game.lower() not in allowed_games:
+        report.update(status="skipped_other_game", streamer=channel, game_name=game)
+        write_report(report)
+        print(f"Streamer {channel} spielt aktuell '{game or 'kein Spiel'}', nicht eines der gewuenschten GTA-Spiele.")
+        return 0
+    if game is None:
+        print("Hinweis: Twitch-Spielkategorie mangels API-Zugang nicht geprueft.")
     raw = OUTPUT / "live_recording.mkv"
     clip = OUTPUT / f"clipforge_{channel}_{now.strftime('%Y%m%d_%H%M%S')}.mp4"
     print(f"Nehme {channel} für maximal {capture_seconds} Sekunden auf.")
@@ -221,10 +257,10 @@ def main() -> int:
     report.update(status="mp4_ready", streamer=channel, mp4_filename=clip.name,
                   mp4_bytes=clip.stat().st_size, clip_start_seconds=start,
                   audio_score_db=energy_db, clip_length_seconds=min(clip_seconds, duration-start),
-                  source=f"https://www.twitch.tv/{channel}", format="vertical_mp4")
+                  source=f"https://www.twitch.tv/{channel}", game_name=game, format="vertical_mp4")
     token = os.getenv("TIKTOK_ACCESS_TOKEN", "").strip()
     mode = os.getenv("TIKTOK_UPLOAD_MODE", "draft").lower()
-    if mode == "draft" and token:
+    if mode == "draft" and token and (game is not None or os.getenv("ALLOW_UNVERIFIED_GAME_UPLOAD", "false").lower() == "true"):
         try:
             publish_id = tiktok_draft(clip, token)
             report.update(uploaded_to_tiktok=True, tiktok_status="inbox_pending",
@@ -234,7 +270,7 @@ def main() -> int:
             report.update(tiktok_status="failed", tiktok_error=str(exc))
             print("TikTok Entwurf fehlgeschlagen: " + str(exc), file=sys.stderr)
     else:
-        report["tiktok_status"] = "not_configured"
+        report["tiktok_status"] = "not_configured_or_game_unverified"
     write_report(report)
     print(f"MP4 fertig: {clip.name}")
     return 0
