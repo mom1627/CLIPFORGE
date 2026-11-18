@@ -104,7 +104,7 @@ async function clip(env,person,mode,now=Date.now()) {
     .bind(id,person.login,url,now,mode,'pending').run();
   if(result.data?.[0]?.edit_url) {
     const editUrl=result.data[0].edit_url;
-    if(/^https:\/\/(clips\.twitch\.tv|www\.twitch\.tv|dashboard\.twitch\.tv)\//.test(editUrl))
+    if(editUrl.startsWith('https://clips.twitch.tv/') || editUrl.startsWith('https://www.twitch.tv/') || editUrl.startsWith('https://dashboard.twitch.tv/'))
       await env.DB.prepare('INSERT OR REPLACE INTO clip_share (id,edit_url,expires_at) VALUES(?,?,?)')
         .bind(id,editUrl,now+24*3600000).run();
   }
@@ -229,7 +229,7 @@ async function route(request,env) {
     try {
       download=await twitch(env,'/clips/downloads?'+qs);
     }catch(e) {
-      if(/Twitch \\(401\\)|Twitch \\(403\\)/.test(String(e.message)))
+      if(String(e.message).includes('Twitch (401)') || String(e.message).includes('Twitch (403)'))
         return answer({error:'Twitch erlaubt diesen MP4-Download nur dem Kanalinhaber oder einem offiziell berechtigten Kanal-Editor. Bitte Twitch erneut verbinden, falls du bereits Editor bist.'},403);
       throw e;
     }
@@ -238,7 +238,7 @@ async function route(request,env) {
     if(!raw) return answer({error:'Kein freigegebener MP4-Download fuer diesen Clip verfuegbar.'},404);
     let assetUrl;
     try {assetUrl=new URL(raw);}catch {return answer({error:'Twitch lieferte einen ungueltigen Download-Link'},502);}
-    if(assetUrl.protocol!=='https:' || !/(^|\\.)twitchcdn\\.net$/.test(assetUrl.hostname))
+    if(assetUrl.protocol!=='https:' || !(assetUrl.hostname==='twitchcdn.net' || assetUrl.hostname.endsWith('.twitchcdn.net')))
       return answer({error:'Unerwarteter Download-Host von Twitch'},502);
     return answer({url:assetUrl.href,format:asset.portrait_download_url?'portrait':'landscape',hint:'Twitch-Download-Link ist zeitlich begrenzt. In Safari gegebenenfalls Video gedrueckt halten und sichern.'});
   }
