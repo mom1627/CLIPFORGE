@@ -86,8 +86,16 @@ async function streams(env,people) {
   return new Map((r.data||[]).map(s=>[s.user_id,s]));
 }
 async function clip(env,person,mode,now=Date.now()) {
-  const result=await twitch(env,'/clips?broadcaster_id='+encodeURIComponent(person.twitch_id),
-    {method:'POST'});
+  let result;
+  try {
+    result=await twitch(env,'/clips?broadcaster_id='+encodeURIComponent(person.twitch_id),
+      {method:'POST'});
+  } catch(e) {
+    if (/Twitch \(403\)/.test(String(e.message))) {
+      throw new Error('Twitch verweigert Clips bei '+person.login+' (403). Oeffne twitch.tv/'+person.login+' und pruefe, ob du auf diesem Kanal Clips erstellen darfst (Follower-/Abo-Regeln, Clips deaktiviert oder Sperre).');
+    }
+    throw e;
+  }
   const id=result.data?.[0]?.id;
   if(!id) throw new Error('Twitch hat keinen Clip erzeugt.');
   const url='https://clips.twitch.tv/'+encodeURIComponent(id);
