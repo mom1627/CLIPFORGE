@@ -89,7 +89,11 @@ def transcribe(path: Path):
         print("Whisper nicht verfuegbar:", e); return [], os.getenv("CAPTION_LANG", "de")
     model = WhisperModel(os.getenv("WHISPER_MODEL", "small"), device="cpu", compute_type="int8")
     lang = os.getenv("CAPTION_LANG") or None
-    segs, info = model.transcribe(str(path), language=lang, word_timestamps=True, vad_filter=True, beam_size=1)
+    import numpy as np
+    pcm = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(path), "-vn", "-ac", "1", "-ar", "16000",
+                          "-f", "f32le", "-"], capture_output=True, timeout=120).stdout
+    audio = np.frombuffer(pcm[: len(pcm) // 4 * 4], dtype=np.float32)   # kein PyAV noetig
+    segs, info = model.transcribe(audio, language=lang, word_timestamps=True, vad_filter=True, beam_size=1)
     words = [(w.start, w.end, w.word) for s in segs for w in (s.words or [])]
     return words, info.language
 

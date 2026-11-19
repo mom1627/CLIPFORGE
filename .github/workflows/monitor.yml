@@ -53,7 +53,7 @@ jobs:
       - name: Release "clips" anlegen (falls fehlend)
         run: gh release view clips >/dev/null 2>&1 || gh release create clips --title "CLIPFORGE Clips" --notes "Automatisch erzeugte 9:16-MP4-Clips" --latest=false
       - name: Live überwachen und clippen
-        run: python -u scripts/monitor.py
+        run: timeout $(( ${MONITOR_MINUTES%.*} + 10 ))m python -u scripts/monitor.py
       - name: MP4-Prüfung
         if: always()
         run: |
