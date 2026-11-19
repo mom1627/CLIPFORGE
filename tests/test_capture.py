@@ -20,6 +20,11 @@ class CaptureTest(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 module.channels()
 
+    def test_allowlist_supports_thirty_channels(self):
+        names = [f"channel_{i:02}" for i in range(30)]
+        with patch.dict(os.environ, {"APPROVED_CHANNELS": ",".join(names)}):
+            self.assertEqual(module.channels(), names)
+
     def test_safe_time_limits(self):
         with patch.dict(os.environ, {"CAPTURE_SECONDS": "900", "CLIP_SECONDS": "70"}):
             self.assertEqual(module.env_int("CAPTURE_SECONDS", 100, 45, 130), 130)
