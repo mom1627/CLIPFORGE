@@ -153,7 +153,8 @@ def render_vertical(source: Path, dest: Path, start: float, clip_seconds: int, d
     # Keep full game visible; blurred sides fill 9:16 rather than stretching/cropping content.
     fit = os.getenv("VIDEO_FIT", "split")
     if fit == "split":  # oben Facecam, unten Gameplay (4:5-Ausschnitt), Hook sitzt an der Naht
-        top_h = round(height * 0.40) // 2 * 2; bot_h = height - top_h
+        top_h = (height - (width * 5 // 4 // 2 * 2)) if os.getenv('GAMEPLAY_ASPECT') == '4:5' else round(height * 0.40) // 2 * 2
+        bot_h = height - top_h
         cam = [float(v) for v in (os.getenv("CAM_BOX") or "0.727,0.60,0.26,0.40").split(",")]
         cx = min(1.0, max(0.0, float(os.getenv("CROP_X", "0.45") or 0.45)))
         gw = f"ih*{width}/{bot_h}"
