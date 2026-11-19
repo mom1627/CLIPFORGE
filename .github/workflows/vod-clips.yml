@@ -1,39 +1,119 @@
 name: CLIPFORGE – VOD-Clips (bereits gestreamte Streams)
+
 on:
   workflow_dispatch:
     inputs:
-      channels: { description: "Streamer (kommagetrennt)", default: "trymacs" }
-      max_clips: { description: "Maximale Anzahl Clips", default: "5" }
-      vods_per_streamer: { description: "Wie viele neueste VODs je Streamer", default: "1" }
-      title_filter: { description: "VOD-Titel muss enthalten (leer = alle)", default: "" }
-      spike_db: { description: "Lautstaerke-Anstieg in dB", default: "6" }
+      streamers:
+        description: "Kommagetrennte Streamer; leer = alle APPROVED_CHANNELS"
+        required: false
+        default: ""
+        type: string
+      hours:
+        description: "VOD-Zeitraum: letzte X Stunden (1–168)"
+        required: true
+        default: "72"
+        type: string
+      max_clips:
+        description: "Maximal fertige Clips insgesamt (1–12)"
+        required: true
+        default: "3"
+        type: string
+      title_filter:
+        description: "Optionaler Text im VOD-Titel (z. B. GTA); leer = alle"
+        required: false
+        default: "GTA"
+        type: string
+  # Run ONCE when this workflow file is updated, in addition to manual dispatch.
+  # No scheduled video recording or permanent GitHub runner.
+  push:
+    paths:
+      - ".github/workflows/vod-clips.yml"
+
 permissions:
   contents: write
+
+concurrency:
+  group: clipforge-vod-clips
+  cancel-in-progress: false
+
 jobs:
-  vod:
+  vod-clips:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
-      APPROVED_CHANNELS: ${{ inputs.channels }}
-      MAX_CLIPS: ${{ inputs.max_clips }}
-      VODS_PER_STREAMER: ${{ inputs.vods_per_streamer }}
-      TITLE_FILTER: ${{ inputs.title_filter }}
-      SPIKE_DB: ${{ inputs.spike_db }}
+      # STRICT allowlist. Never replace this with user-supplied channels.
+      APPROVED_CHANNELS: ${{ vars.APPROVED_CHANNELS }}
+      VOD_STREAMERS: ${{ inputs.streamers || '' }}
+      VOD_HOURS: ${{ inputs.hours || '72' }}
+      MAX_CLIPS: ${{ inputs.max_clips || '3' }}
+      TITLE_FILTER: ${{ inputs.title_filter || 'GTA' }}
+      VODS_PER_STREAMER: "1"
+      SCAN_WINDOWS: "3"
+      SCAN_SECONDS: "360"
+      MIN_GAP: "120"
+      SPIKE_DB: "6"
       VIDEO_WIDTH: "720"
       VIDEO_FIT: split
+      WHISPER_MODEL: small
+      TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
+      TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
       GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: clips
-      WHISPER_MODEL: ${{ vars.WHISPER_MODEL || 'small' }}
-      HOOKS: ${{ vars.HOOKS }}
+      CLIPFORGE_OUTPUT: output
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg && python -m pip install -q yt-dlp "streamlink>=8,<9" faster-whisper
-      - run: gh release view clips >/dev/null 2>&1 || gh release create clips --title "CLIPFORGE Clips" --notes "Clips" --latest=false
-      - run: python -u scripts/vod_clips.py
-      - name: MP4-Pruefung
+        with:
+          python-version: "3.12"
+      - name: Voraussetzungen und Abgrenzung pruefen
+        run: |
+          test -n "$APPROVED_CHANNELS" || { echo "::error::GitHub-Variable APPROVED_CHANNELS fehlt. Nur freigegebene Twitch-Kanaele duerfen verarbeitet werden."; exit 1; }
+          test -n "$TWITCH_CLIENT_ID" && test -n "$TWITCH_CLIENT_SECRET" || { echo "::error::Twitch-Helix-Secrets TWITCH_CLIENT_ID und TWITCH_CLIENT_SECRET fehlen."; exit 1; }
+          echo "Nur oeffentliche VODs; keine Umgehung von Login, Abo oder geloeschten Videos."
+      - name: FFmpeg, yt-dlp und faster-whisper installieren
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+          python -m pip install --disable-pip-version-check --quiet "yt-dlp>=2026.10.0" "streamlink>=8,<9" "faster-whisper>=1.1,<2"
+      - name: Python-Syntax
+        run: python -m compileall -q scripts/monitor.py scripts/captions.py scripts/live_capture.py scripts/vod_clips.py tests/test_vod_clips.py
+      - name: VOD-Komponententests
+        run: python -m unittest discover -s tests -p 'test_vod_clips.py' -v
+      - name: Release clips pruefen oder erstellen
+        run: |
+          gh release view clips >/dev/null 2>&1 || gh release create clips --title "CLIPFORGE Clips" --notes "Verifizierte Clip-Exporte" --latest=false
+      - name: VODs pruefen, Highlights finden und MP4s verifizieren
+        run: python -u scripts/vod_clips.py
+      - name: ffprobe-Nachweis und Bericht
         if: always()
         run: |
-          cat output/vod_report.json 2>/dev/null || true
-          for f in output/*.mp4; do [ -f "$f" ] && ffprobe -v error -show_entries stream=width,height:format=duration -of compact "$f"; done || true
+          if [ -f output/vod_report.json ]; then
+            python - <<'PY'
+          import json
+          d=json.load(open("output/vod_report.json"))
+          print("VODs gefunden:",d.get("vods_found",0))
+          print("Kandidaten:",d.get("candidate_count",0))
+          for c in d.get("clips",[]):
+              print("MP4",c["file"],"ffprobe",json.dumps(c.get("ffprobe",{})),"uploaded",c.get("published",False))
+          for s in d.get("skip_reasons",[])[:12]:
+              print("UEBERSPRUNGEN",json.dumps(s,ensure_ascii=False))
+          print("Fehler:",d.get("fatal_error"))
+          PY
+          else
+            echo "::error::Kein VOD-Bericht entstanden (Abbruch vor Skriptstart)."
+          fi
+          for f in output/*.mp4; do
+            [ -f "$f" ] || continue
+            printf "VERIFIED_FILE %s " "$(basename "$f")"
+            ffprobe -v error -show_entries stream=codec_name,width,height,avg_frame_rate:format=duration -of compact "$f"
+          done
+      - name: Diagnostik archivieren
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clipforge-vod-report-${{ github.run_id }}
+          path: |
+            output/vod_report.json
+            output/clips.json
+          if-no-files-found: warn
+          retention-days: 7
