@@ -18,10 +18,10 @@ jobs:
       - run: python -m pip install --disable-pip-version-check -q yt-dlp
       - name: Download public test excerpt
         run: |
-          python -m yt_dlp --no-playlist -f 'best[height<=720]/best' --download-sections '*00:00:00-00:01:05' --force-keyframes-at-cuts -o sample.mp4 'https://www.twitch.tv/videos/2932305259'
+          python -m yt_dlp --no-playlist -f 'best[height<=720]/best' --download-sections '*00:42:00-00:43:10' --force-keyframes-at-cuts -o sample.mp4 'https://www.twitch.tv/videos/2932305259'
           ffprobe -v error -show_entries format=duration,size -of default=nw=1 sample.mp4
       - uses: actions/upload-artifact@v4
         with:
-          name: vod-test-excerpt
+          name: vod-chat-peak-42m
           path: sample.mp4
           retention-days: 1
