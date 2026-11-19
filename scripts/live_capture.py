@@ -42,7 +42,7 @@ def channels() -> list[str]:
             raise ValueError("Ungültiger Kanalname")
         if name not in found:
             found.append(name)
-    return found[:12]
+    return found[:30]
 
 def run(command: list[str], *, timeout: int = 30, check: bool = True) -> subprocess.CompletedProcess:
     return subprocess.run(command, capture_output=True, text=True, timeout=timeout, check=check)
