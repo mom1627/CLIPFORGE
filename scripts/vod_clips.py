@@ -363,13 +363,13 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
         # Mastering fixes exactly 1800 video frames at 30fps and 60s of audio.
         # Run in temp dir so the ASS filter has an unambiguous local filename.
         subprocess_cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-             "-i", str(prelim), "-vf",
+             "-i", str(Path(prelim).resolve()), "-vf",
              "ass=captions.ass,tpad=stop_mode=clone:stop_duration=1,fps=30",
              "-af", "apad,atrim=duration=60,asetpts=N/SR/TB",
              "-frames:v", "1800", "-t", "60",
              "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
              "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
-             "-movflags", "+faststart", str(output)]
+             "-movflags", "+faststart", str(Path(output).resolve())]
         run = subprocess.run(subprocess_cmd, cwd=tmp, capture_output=True, text=True,
                              timeout=480)
         if run.returncode:

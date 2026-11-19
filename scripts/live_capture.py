@@ -36,14 +36,14 @@ def channels() -> list[str]:
     if not raw:
         raise RuntimeError("APPROVED_CHANNELS ist leer. Nur freigegebene Streamer eintragen.")
     found = []
-    for part in re.split(r"[,;\s]+", raw):  # Komma, Semikolon, Leerzeichen oder Zeilenumbruch
+    for part in re.split(r"[,;\n]+", raw):  # Komma, Semikolon oder Zeilenumbruch (KEINE Leerzeichen: Anzeigenamen wie "Kai Cenat" sind ungueltig)
         name = part.strip().strip("\"'").lower().lstrip("@").rstrip("/")
         if not name:
             continue
         if "twitch.tv/" in name:  # ganzer Link -> nur der Kanalname
             name = name.split("twitch.tv/")[-1].split("/")[0].split("?")[0]
         if not re.fullmatch(r"[a-z0-9_]{3,25}", name):
-            raise ValueError(f"Ungültiger Kanalname: {name[:30]!r}")
+            raise ValueError(f"Ungültiger Kanalname: {name[:30]!r} (nur a-z, 0-9, _ ; Twitch-Login statt Anzeigename, z. B. kaicenat)")
         if name not in found:
             found.append(name)
     return found[:12]
