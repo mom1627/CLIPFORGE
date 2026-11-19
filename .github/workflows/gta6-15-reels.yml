@@ -1,0 +1,44 @@
+name: CLIPFORGE - GTA6 15 x 60s Reels
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/gta6-15-reels.yml"
+      - "production/gta6_15_manifest.json"
+permissions:
+  contents: read
+concurrency:
+  group: clipforge-gta6-15-reels
+  cancel-in-progress: false
+jobs:
+  render:
+    name: Clip ${{ matrix.index }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        index: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    env:
+      CLIP_INDEX: ${{ matrix.index }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free render dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core libass9
+          python -m pip install --disable-pip-version-check "yt-dlp>=2026.10.0" "faster-whisper>=1.1,<2"
+      - name: Render 60-second vertical video with real word captions
+        run: python scripts/render_one_gta6_reel.py
+      - name: Upload TikTok-ready MP4 for iPhone
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: GTA6-Reel-${{ matrix.index }}
+          path: dist/gta6_reels/*
+          retention-days: 7
+          if-no-files-found: error
