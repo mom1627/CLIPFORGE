@@ -15,7 +15,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: clipforge-monitor
+  group: clipforge-${{ github.event_name == 'schedule' && 'sched' || github.run_id }}
   cancel-in-progress: false
 
 jobs:
