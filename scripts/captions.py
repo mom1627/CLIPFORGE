@@ -57,7 +57,7 @@ def wrap(text: str, width: int = 17) -> str:
     return "\\N".join(out[:3])
 
 
-def build_ass(words, hook: str, width: int, height: int, duration: float, hook_seconds: float = 2.8, split: bool = False) -> str:
+def build_ass(words, hook: str, width: int, height: int, duration: float, hook_seconds: float = 2.8, split: bool = False, hook_y_override: int | None = None, subtitle_y_override: int | None = None) -> str:
     fs, hs = round(width * 0.078), round(width * 0.092)
     sub_y = round(height * (0.80 if split else 0.735))      # unterhalb des 16:9-Spielfelds, oberhalb der TikTok-Bedienelemente
     hook_y = round(height * (0.40 - 0.07) if split else height * 0.22)      # im unscharfen Bereich ueber dem Spielfeld
