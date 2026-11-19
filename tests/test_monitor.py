@@ -19,6 +19,13 @@ class DetectorTest(unittest.TestCase):
         d = monitor.Detector()
         self.assertEqual(d.feed([-60.0] * 200 + [-45.0] * 12 + [-60.0] * 50), [])
 
+class RangeTest(unittest.TestCase):
+    def test_always_60s(self):
+        for e in (20, 70, 400):
+            a, b = monitor.clip_range(e, 38)
+            self.assertEqual(b - a, 60)
+            self.assertGreaterEqual(a, 0)
+
 class AudioTest(unittest.TestCase):
     def test_per_second_db_from_real_ffmpeg(self):
         with tempfile.TemporaryDirectory() as t:

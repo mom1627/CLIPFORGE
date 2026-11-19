@@ -86,10 +86,18 @@ def stop(*procs):
             p.kill()
 
 
+CLIP_LEN = 60  # Clips sind immer genau 60 s lang
+
+
+def clip_range(end_s: int, pre: int):
+    """Genau CLIP_LEN Sekunden: 'pre' s vor Beginn des Highlight-Fensters, Rest danach."""
+    start = max(0, end_s - int(env_f("WINDOW_SECONDS", 8)) - pre)
+    return start, start + CLIP_LEN
+
+
 def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, channel: str):
-    """Cut [end-w-pre, end+post] seconds from consecutive segments and render 9:16."""
-    start_abs = max(0, end_s - int(env_f("WINDOW_SECONDS", 8)) - pre)
-    stop_abs = end_s + post
+    """Cut exactly 60 s from consecutive segments and render 9:16."""
+    start_abs, stop_abs = clip_range(end_s, pre)
     first, last = start_abs // SEG, (stop_abs - 1) // SEG
     segs = [folder / f"seg_{i:05d}.ts" for i in range(first, last + 1)]
     if not all(s.exists() for s in segs):
@@ -103,10 +111,10 @@ def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, ch
         return None
     dur = lc.probe_duration(joined)
     off = start_abs - first * SEG
-    length = int(min(stop_abs - start_abs, dur - off))
+    length = CLIP_LEN if dur - off >= CLIP_LEN - 1.5 else int(dur - off)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     dest = dest_dir / f"clipforge_{channel}_{stamp}.mp4"
-    lc.render_vertical(joined, dest, float(off), length, dur)
+    lc.render_vertical(joined, dest, float(off), length, off + length + 5)
     joined.unlink(missing_ok=True)
     return dest
 
@@ -125,7 +133,7 @@ def publish(mp4: Path) -> bool:
 def main() -> int:
     out = Path(os.getenv("CLIPFORGE_OUTPUT", "output")); out.mkdir(parents=True, exist_ok=True)
     budget = time.time() + env_f("MONITOR_MINUTES", 330) * 60
-    pre, post = int(env_f("PRE_SECONDS", 25)), int(env_f("POST_SECONDS", 17))
+    pre, post = int(env_f("PRE_SECONDS", 38)), 0
     max_clips = int(env_f("MAX_CLIPS", 12))
     allowed = [g.strip().lower() for g in os.getenv("ALLOWED_GAMES", "Grand Theft Auto VI").split(",") if g.strip()]
     channels = lc.channels()
@@ -162,7 +170,7 @@ def main() -> int:
                         print(f"Highlight erkannt bei {end}s.", flush=True)
                 recorded = done * SEG
                 for end in list(pending):
-                    if recorded >= end + post:
+                    if recorded >= clip_range(end, pre)[1]:
                         pending.remove(end)
                         mp4 = build_clip(folder, end, pre, post, out, live)
                         if mp4:

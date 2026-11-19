@@ -156,11 +156,11 @@ def render_vertical(source: Path, dest: Path, start: float, clip_seconds: int, d
         f"[bg]scale={width}:{height}:force_original_aspect_ratio=increase,"
         f"crop={width}:{height},boxblur=20:1[back];"
         f"[fg]scale={width}:{height}:force_original_aspect_ratio=decrease[front];"
-        "[back][front]overlay=(W-w)/2:(H-h)/2,format=yuv420p[v]"
+        "[back][front]overlay=(W-w)/2:(H-h)/2,format=yuv420p,tpad=stop_mode=clone:stop_duration=2[v]"
     )
     cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-ss", str(start),
            "-i", str(source), "-t", str(min(clip_seconds, duration - start)),
-           "-filter_complex", filt, "-map", "[v]", "-map", "0:a?",
+           "-filter_complex", filt, "-map", "[v]", "-map", "0:a?", "-af", "apad=pad_dur=2",
            "-r", "30", "-c:v", "libx264", "-preset", "veryfast",
            "-crf", "25", "-pix_fmt", "yuv420p", "-c:a", "aac",
            "-b:a", "128k", "-movflags", "+faststart", str(dest)]
