@@ -65,6 +65,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Python-Syntax
+        run: python -m compileall -q scripts/monitor.py scripts/captions.py scripts/live_capture.py scripts/vod_clips.py tests/test_vod_clips.py
+      - name: VOD-Komponententests
+        run: python -m unittest discover -s tests -p 'test_vod_clips.py' -v
       - name: Voraussetzungen und Abgrenzung pruefen
         run: |
           test -n "$APPROVED_CHANNELS" || { echo "::error::GitHub-Variable APPROVED_CHANNELS fehlt. Nur freigegebene Twitch-Kanaele duerfen verarbeitet werden."; exit 1; }
@@ -75,10 +79,6 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
           python -m pip install --disable-pip-version-check --quiet "yt-dlp>=2026.10.0" "streamlink>=8,<9" "faster-whisper>=1.1,<2"
-      - name: Python-Syntax
-        run: python -m compileall -q scripts/monitor.py scripts/captions.py scripts/live_capture.py scripts/vod_clips.py tests/test_vod_clips.py
-      - name: VOD-Komponententests
-        run: python -m unittest discover -s tests -p 'test_vod_clips.py' -v
       - name: Release clips pruefen oder erstellen
         run: |
           gh release view clips >/dev/null 2>&1 || gh release create clips --title "CLIPFORGE Clips" --notes "Verifizierte Clip-Exporte" --latest=false
