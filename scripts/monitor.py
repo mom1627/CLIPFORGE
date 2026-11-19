@@ -12,7 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import live_capture as lc  # reuse channel allowlist, availability check, game check, renderer
+import live_capture as lc
+import captions  # reuse channel allowlist, availability check, game check, renderer
 
 SEG = 30  # seconds per recorded segment
 
@@ -165,6 +166,8 @@ def main() -> int:
                         pending.remove(end)
                         mp4 = build_clip(folder, end, pre, post, out, live)
                         if mp4:
+                            if os.getenv("CAPTIONS", "1") == "1":
+                                mp4 = captions.add_captions(mp4, live, str(end))
                             clips += 1; session["clips"] += 1
                             ok = publish(mp4)
                             report["clips"].append({"file": mp4.name, "channel": live, "second": end,
