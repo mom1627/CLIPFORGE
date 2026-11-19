@@ -61,6 +61,10 @@ def build_ass(words, hook: str, width: int, height: int, duration: float, hook_s
     fs, hs = round(width * 0.078), round(width * 0.092)
     sub_y = round(height * (0.80 if split else 0.735))      # unterhalb des 16:9-Spielfelds, oberhalb der TikTok-Bedienelemente
     hook_y = round(height * (0.40 - 0.07) if split else height * 0.22)      # im unscharfen Bereich ueber dem Spielfeld
+    if hook_y_override is not None:
+        hook_y = max(50, min(height - 50, int(hook_y_override)))
+    if subtitle_y_override is not None:
+        sub_y = max(50, min(height - 50, int(subtitle_y_override)))
     head = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: {width}
