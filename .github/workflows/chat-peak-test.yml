@@ -1,0 +1,27 @@
+name: Chat peak sampling test
+on:
+  push:
+    branches: [test/public-vod-import]
+    paths: [.github/workflows/chat-peak-test.yml]
+permissions:
+  contents: read
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download official TwitchDownloader CLI
+        run: |
+          curl -fsSL https://github.com/lay295/TwitchDownloader/releases/download/1.56.5/TwitchDownloaderCLI-1.56.5-Linux-x64.zip -o cli.zip
+          mkdir cli && unzip -oq cli.zip -d cli
+          chmod +x cli/TwitchDownloaderCLI
+      - name: Retrieve first hour of public chat replay
+        run: timeout 300 cli/TwitchDownloaderCLI chatdownload --id 2932305259 --beginning 0s --ending 1h --threads 2 --output chat.json --collision Overwrite
+      - name: Rank activity spikes without retaining chat messages
+        run: python3 scripts/chat_peak_test.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vod-chat-activity-summary
+          path: chat_peaks.json
+          retention-days: 1
