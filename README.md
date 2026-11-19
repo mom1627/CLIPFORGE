@@ -1,3 +1,32 @@
+## VOD-Clips – vergangene Twitch-Streams (19.11.2026)
+
+Der Live-Monitor bleibt bestehen. Neu ist der manuelle Workflow [VOD-Clips](.github/workflows/vod-clips.yml), implementiert in [scripts/vod_clips.py](scripts/vod_clips.py). Er verwendet die vorhandenen `monitor.Detector`, `monitor.per_second_db`, `live_capture.render_vertical`, `captions.transcribe` und `captions.build_ass`.
+
+**Teststand:** 14 von 14 VOD-Komponententests und Python-Syntaxprüfung bestanden. Der echte VOD-Lauf ist jedoch vor dem Rendern an fehlender GitHub-Konfiguration gescheitert. Es sind dadurch noch KEINE neuen VOD-MP4s entstanden.
+
+### Einmalige Einrichtung in GitHub (Cloudflare-Secrets werden nicht übertragen)
+
+Unter **Repository → Settings → Secrets and variables → Actions**:
+
+1. **Variables → New repository variable:** `APPROVED_CHANNELS` = Kommaliste der Streamer mit ausdrücklicher Aufnahme-, Bearbeitungs- und Reupload-Freigabe. Die Workflow-Eingabe `streamers` darf diese Liste nur einschränken, niemals erweitern.
+2. **Secrets → New repository secret:** `TWITCH_CLIENT_ID` sowie `TWITCH_CLIENT_SECRET` aus der vorhandenen Twitch-Developer-App. Geheime Werte niemals in Commits oder den Chat einfügen.
+3. **Actions → CLIPFORGE – VOD-Clips → Run workflow**. Eingaben: `streamers` (leer = alle freigegebenen), `hours` (1–168, Standard 72), `max_clips` (1–12, Standard 3), `title_filter` (Standard GTA; leer = alle).
+
+### Funktionsweise und Grenzen
+
+- Twitch Helix liefert öffentliche Archiv-VODs (`type=archive`). Das Alter wird anhand VOD-Beginn plus VOD-Dauer geprüft; gesperrte, gelöschte oder nur für Abonnenten sichtbare VODs werden übersprungen.
+- `yt-dlp` lädt pro VOD standardmäßig nur drei über die Gesamtdauer verteilte 360-Sekunden-Zeitfenster. **Die gesamte VOD-Länge wird NICHT vollständig analysiert.** Diese Abdeckung ist zum Schutz des kostenlosen Runner-Budgets begrenzt und steht im Bericht.
+- Audio-Peaks werden relativ zum Median-Grundlevel gerankt, zwei Minuten Mindestabstand, maximal zwei Clips je VOD. Optionale Chat-Spitzen über verfügbare Exportdateien unter `data/chat/{vod_id}.json` (`comments[].content_offset_seconds`). Ohne Chat-Replay bleibt es bei Audio.
+- Der Video-Renderer erstellt 9:16 H.264/AAC, oben Facecam und unten Gameplay im echten 4:5-Bereich; Kamera-Rechtecke kommen aus `config/cams.json`. Derzeit enthält diese Datei nur eine Default-Position und Trymacs; andere Streamer brauchen vor TikTok-Uploads eine Sichtprüfung der Facecam.
+- `faster-whisper` (`small`, `int8`) transkribiert echte Sprache, Hook besteht aus höchstens 8 tatsächlich gesprochenen Wörtern. Keine Standard-Hooks und keine erfundenen Untertitel.
+- Verbindliche `ffprobe`-Prüfung vor Release-Upload: 60,00 ± 0,05 Sekunden, genau 1800 Bilder, 30 FPS, 720×1280 oder 1080×1920, H.264 + AAC.
+- Validierte Dateien bekommen den Namen `Streamer_YYYYMMDD_HHMMSS.mp4` und werden über den bestehenden `monitor.publish` an Release [clips](https://github.com/mom1627/CLIPFORGE/releases/tag/clips) gehängt. Im selben Release liegt `clips.json` mit VOD-URL, Zeitstempel, Hook und technischen Messwerten.
+- GitHub Actions liefert ein `vod_report.json` mit den genauen Fehlern. Der Workflow besteht nur bei mindestens drei wirklich veröffentlichten MP4s (sofern nicht weniger angefordert wurden).
+
+**Keine Live-Monitor-Clips fälschlich als neue VOD-Ergebnisse bezeichnen.** Manuelle Action für begrenzte Test-/Bearbeitungsläufe, kein Dauer-Server.
+
+---
+
 # CLIPFORGE – Live-Monitor (Stand 18.11.2026, getestet)
 
 **Das funktioniert und wurde mit echtem Livestream geprüft:** Der Workflow *CLIPFORGE – Live-Monitor* (`.github/workflows/monitor.yml`) läuft kostenlos auf GitHub Actions, nimmt einen freigegebenen Twitch-Stream laufend auf, erkennt Lautstärke-Spitzen (Highlights) **während der Stream live ist**, rendert 9:16-MP4s (720x1280, H.264) und hängt sie an das GitHub-Release **„clips“** an. Auf dem iPhone: GitHub-App/Safari -> Repository -> Releases -> clips -> MP4 antippen.
