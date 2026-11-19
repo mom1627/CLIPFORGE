@@ -113,9 +113,9 @@ def add_captions(mp4: Path, channel: str, seed: str = "") -> Path:
         ass = mp4.with_suffix(".ass")
         ass.write_text(build_ass(words, pick_hook(channel, seed or mp4.name, lang), w, h, d), encoding="utf-8")
         out = mp4.with_name(mp4.stem + "_cap.mp4")
-        r = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(mp4),
+        r = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", mp4.name,
                             "-vf", f"ass={ass.name}", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
-                            "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart", str(out)],
+                            "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart", out.name],
                            capture_output=True, text=True, cwd=str(mp4.parent), timeout=300)
         if r.returncode or not out.exists() or out.stat().st_size < 10_000:
             print("Untertitel-Rendern fehlgeschlagen:", r.stderr[-300:]); return mp4
