@@ -114,6 +114,8 @@ def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, ch
     length = CLIP_LEN if dur - off >= CLIP_LEN - 1.5 else int(dur - off)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     dest = dest_dir / f"clipforge_{channel}_{stamp}.mp4"
+    cams = json.loads(Path(__file__).resolve().parent.parent.joinpath('config/cams.json').read_text())
+    os.environ['CAM_BOX'] = ','.join(str(v) for v in cams.get(channel, cams['default']))
     lc.render_vertical(joined, dest, float(off), length, off + length + 5)
     joined.unlink(missing_ok=True)
     return dest

@@ -5,6 +5,12 @@ on:
       minutes:
         description: "Überwachungsdauer in Minuten (max. 340)"
         default: "330"
+      channels:
+        description: "Streamer (kommagetrennt), leer = Standardliste"
+        default: ""
+      max_clips:
+        description: "Maximale Anzahl Clips"
+        default: "12"
       spike_db:
         description: "Lautstärke-Anstieg in dB für ein Highlight (kleiner = mehr Clips)"
         default: "7"
@@ -25,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 350
     env:
-      APPROVED_CHANNELS: ${{ vars.APPROVED_CHANNELS || 'kaicenat,xqc,montanablack88,trymacs,papaplatte,caseoh_' }}
+      APPROVED_CHANNELS: ${{ inputs.channels || vars.APPROVED_CHANNELS || 'kaicenat,xqc,montanablack88,trymacs,papaplatte,caseoh_' }}
       ALLOWED_GAMES: ${{ vars.ALLOWED_GAMES || 'Grand Theft Auto VI' }}
       TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
       TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
@@ -34,6 +40,7 @@ jobs:
       VIDEO_WIDTH: "720"
       GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: clips
+      MAX_CLIPS: ${{ inputs.max_clips || '12' }}
       CAPTIONS: "1"
       WHISPER_MODEL: ${{ vars.WHISPER_MODEL || 'small' }}
       HOOKS: ${{ vars.HOOKS }}

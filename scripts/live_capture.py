@@ -151,7 +151,19 @@ def render_vertical(source: Path, dest: Path, start: float, clip_seconds: int, d
     width = width // 2 * 2
     height = round(width * 16 / 9) // 2 * 2
     # Keep full game visible; blurred sides fill 9:16 rather than stretching/cropping content.
-    if os.getenv("VIDEO_FIT", "fill") == "blur":
+    fit = os.getenv("VIDEO_FIT", "split")
+    if fit == "split":  # oben Facecam, unten Gameplay (4:5-Ausschnitt), Hook sitzt an der Naht
+        top_h = round(height * 0.40) // 2 * 2; bot_h = height - top_h
+        cam = [float(v) for v in (os.getenv("CAM_BOX") or "0.727,0.60,0.26,0.40").split(",")]
+        cx = min(1.0, max(0.0, float(os.getenv("CROP_X", "0.45") or 0.45)))
+        gw = f"ih*{width}/{bot_h}"
+        filt = (
+            "[0:v]split=2[a][b];"
+            f"[a]crop=iw*{cam[2]}:ih*{cam[3]}:iw*{cam[0]}:ih*{cam[1]},scale={width}:{top_h}:force_original_aspect_ratio=increase:flags=lanczos,crop={width}:{top_h}[t];"
+            f"[b]crop={gw}:ih:(iw-{gw})*{cx}:0,scale={width}:{bot_h}:flags=lanczos[g];"
+            "[t][g]vstack,format=yuv420p,tpad=stop_mode=clone:stop_duration=2[v]"
+        )
+    elif fit == "blur":
         filt = (
             "[0:v]split=2[bg][fg];"
             f"[bg]scale={width}:{height}:force_original_aspect_ratio=increase,"
