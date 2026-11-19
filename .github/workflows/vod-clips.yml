@@ -1,0 +1,39 @@
+name: CLIPFORGE – VOD-Clips (bereits gestreamte Streams)
+on:
+  workflow_dispatch:
+    inputs:
+      channels: { description: "Streamer (kommagetrennt)", default: "trymacs" }
+      max_clips: { description: "Maximale Anzahl Clips", default: "5" }
+      vods_per_streamer: { description: "Wie viele neueste VODs je Streamer", default: "1" }
+      title_filter: { description: "VOD-Titel muss enthalten (leer = alle)", default: "" }
+      spike_db: { description: "Lautstaerke-Anstieg in dB", default: "6" }
+permissions:
+  contents: write
+jobs:
+  vod:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      APPROVED_CHANNELS: ${{ inputs.channels }}
+      MAX_CLIPS: ${{ inputs.max_clips }}
+      VODS_PER_STREAMER: ${{ inputs.vods_per_streamer }}
+      TITLE_FILTER: ${{ inputs.title_filter }}
+      SPIKE_DB: ${{ inputs.spike_db }}
+      VIDEO_WIDTH: "720"
+      VIDEO_FIT: split
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: clips
+      WHISPER_MODEL: ${{ vars.WHISPER_MODEL || 'small' }}
+      HOOKS: ${{ vars.HOOKS }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg && python -m pip install -q yt-dlp "streamlink>=8,<9" faster-whisper
+      - run: gh release view clips >/dev/null 2>&1 || gh release create clips --title "CLIPFORGE Clips" --notes "Clips" --latest=false
+      - run: python -u scripts/vod_clips.py
+      - name: MP4-Pruefung
+        if: always()
+        run: |
+          cat output/vod_report.json 2>/dev/null || true
+          for f in output/*.mp4; do [ -f "$f" ] && ffprobe -v error -show_entries stream=width,height:format=duration -of compact "$f"; done || true
