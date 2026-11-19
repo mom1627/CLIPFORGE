@@ -151,13 +151,18 @@ def render_vertical(source: Path, dest: Path, start: float, clip_seconds: int, d
     width = width // 2 * 2
     height = round(width * 16 / 9) // 2 * 2
     # Keep full game visible; blurred sides fill 9:16 rather than stretching/cropping content.
-    filt = (
-        "[0:v]split=2[bg][fg];"
-        f"[bg]scale={width}:{height}:force_original_aspect_ratio=increase,"
-        f"crop={width}:{height},boxblur=20:1[back];"
-        f"[fg]scale={width}:{height}:force_original_aspect_ratio=decrease[front];"
-        "[back][front]overlay=(W-w)/2:(H-h)/2,format=yuv420p,tpad=stop_mode=clone:stop_duration=2[v]"
-    )
+    if os.getenv("VIDEO_FIT", "fill") == "blur":
+        filt = (
+            "[0:v]split=2[bg][fg];"
+            f"[bg]scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"crop={width}:{height},boxblur=20:1[back];"
+            f"[fg]scale={width}:{height}:force_original_aspect_ratio=decrease[front];"
+            "[back][front]overlay=(W-w)/2:(H-h)/2,format=yuv420p,tpad=stop_mode=clone:stop_duration=2[v]"
+        )
+    else:  # 'fill': echtes Vollbild-Hochformat, Bild wird auf 9:16 zugeschnitten (CROP_X 0..1 = Ausschnitt links..rechts)
+        cx = min(1.0, max(0.0, float(os.getenv("CROP_X", "0.5") or 0.5)))
+        filt = (f"[0:v]scale=-2:{height}:flags=lanczos,crop={width}:{height}:(iw-{width})*{cx}:0,"
+                "format=yuv420p,tpad=stop_mode=clone:stop_duration=2[v]")
     cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-ss", str(start),
            "-i", str(source), "-t", str(min(clip_seconds, duration - start)),
            "-filter_complex", filt, "-map", "[v]", "-map", "0:a?", "-af", "apad=pad_dur=2",
