@@ -115,7 +115,11 @@ class LiveWorker(threading.Thread):
                 for item in sorted(pending):
                     if recorded >= monitor.clip_range(item[0], pre)[1]:
                         pending.remove(item)
-                        self._make_clip(*item)
+                        try:
+                            self._make_clip(*item)
+                        except Exception as exc:  # ein kaputter Clip beendet nicht die ganze Ueberwachung
+                            self.last_reason = f"Clip übersprungen: {str(exc)[:80]}"
+                            self.state = "nimmt auf"
                 for old in segs[:max(0, done - 14)]:  # Puffer ~7 Minuten
                     old.unlink(missing_ok=True)
         except Exception as exc:  # Fehler sichtbar machen, App laeuft weiter

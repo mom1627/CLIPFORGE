@@ -112,6 +112,9 @@ def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, ch
         return None
     dur = lc.probe_duration(joined)
     off = start_abs - first * SEG
+    if dur - off < 15:  # Aufnahme zu kurz/Luecke -> kein Clip statt Absturz
+        joined.unlink(missing_ok=True)
+        return None
     length = CLIP_LEN if dur - off >= CLIP_LEN - 1.5 else int(dur - off)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     dest = dest_dir / f"clipforge_{channel}_{stamp}.mp4"
