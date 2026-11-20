@@ -461,7 +461,7 @@ def main() -> int:
         with tempfile.TemporaryDirectory(prefix="clipforge_vods_") as td:
             tmp = Path(td)
             for vod in vods:
-                if time.monotonic() - started > 80 * 60:
+                if time.monotonic() - started > 30 * 60:
                     report["warnings"].append("Zeitbudget erreicht: weitere VODs ausgelassen")
                     break
                 chat_path = Path(os.getenv("CHAT_REPLAY_JSON_DIR", "data/chat")) / (vod["id"] + ".json")

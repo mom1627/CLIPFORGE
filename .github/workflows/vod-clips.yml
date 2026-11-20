@@ -39,7 +39,7 @@ concurrency:
 jobs:
   vod-clips:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 60
     env:
       # STRICT allowlist. Never replace this with user-supplied channels.
       APPROVED_CHANNELS: ${{ vars.APPROVED_CHANNELS }}
@@ -48,8 +48,8 @@ jobs:
       MAX_CLIPS: ${{ inputs.max_clips || '3' }}
       TITLE_FILTER: ${{ inputs.title_filter || 'GTA' }}
       VODS_PER_STREAMER: "1"
-      SCAN_WINDOWS: "3"
-      SCAN_SECONDS: "360"
+      SCAN_WINDOWS: "2"
+      SCAN_SECONDS: "240"
       MIN_GAP: "120"
       SPIKE_DB: "6"
       VIDEO_WIDTH: "720"
