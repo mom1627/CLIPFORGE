@@ -25,6 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import captions
 import live_capture as lc
+import chat_probe
 import monitor
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -468,6 +469,15 @@ def main() -> int:
                 chat = chat_offsets(chat_path)
                 if not chat:
                     report["warnings"].append("Chat-Replay nicht verfuegbar fuer VOD " + vod["id"])
+                peaks = [] if chat else chat_probe.chat_peaks(vod["id"], vod["duration"], count=max(4, max_clips))
+                if peaks:  # schnell: Chat-Spitzen, nur kurze Ausschnitte laden
+                    report["warnings"].append(f"Chat-Spitzen fuer VOD {vod['id']}: {len(peaks)}")
+                    for off, ratio in peaks:
+                        at = max(8, off - 8)
+                        start = int(max(0, min(vod["duration"] - 60, at - 8 - 38)))
+                        candidates.append(Candidate(vod["channel"], vod["id"], start, int(at),
+                                          round(ratio, 2), 0.0, round(ratio, 2), vod["title"]))
+                    continue
                 candidates.extend(candidates_for_vod(vod, tmp, scan_count,
                             scan_seconds, float(os.getenv("SPIKE_DB", "6")),
                             chat, report["windows"]))
