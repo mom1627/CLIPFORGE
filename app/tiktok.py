@@ -99,7 +99,7 @@ class TikTok:
             raise TikTokError("TIKTOK_CLIENT_KEY/TIKTOK_CLIENT_SECRET fehlen in ~/CLIPFORGE/.env")
         verifier = secrets.token_urlsafe(48)
         challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
-        if os.getenv("TIKTOK_PKCE_HEX") == "1":  # Login Kit for Desktop erwartet SHA256 als Hex
+        if os.getenv("TIKTOK_PKCE_HEX", "1") == "1":  # Login Kit for Desktop erwartet SHA256 als Hex (getestet: Base64 wird abgelehnt)
             challenge = hashlib.sha256(verifier.encode()).hexdigest()
         state = secrets.token_urlsafe(16)
         self._pending[state] = verifier
