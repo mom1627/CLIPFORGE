@@ -112,7 +112,8 @@ class Manager:
                 except Exception:
                     self.live[ch] = False
                 w = self.workers.get(ch)
-                if self.cfg.get("auto_watch") and self.live[ch] and not (w and w.is_alive()):
+                failed = w is not None and not w.is_alive() and str(w.state).startswith("Fehler")
+                if self.cfg.get("auto_watch") and self.live[ch] and not (w and w.is_alive()) and not failed:
                     try:
                         self.start_watch(ch)
                     except RuntimeError:

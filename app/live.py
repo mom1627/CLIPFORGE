@@ -69,7 +69,13 @@ class LiveWorker(threading.Thread):
         if self.folder.exists():
             shutil.rmtree(self.folder, ignore_errors=True)
         self.chat.start()
-        src, ff = monitor.start_recorder(self.channel, self.folder)
+        try:
+            src, ff = monitor.start_recorder(self.channel, self.folder)
+        except OSError as exc:
+            self.chat.stop()
+            self.state = f"Fehler: {exc}"[:140]
+            self.running = False
+            return
         t0 = None
         det = monitor.Detector(spike_db=float(self.settings.get("spike_db", 7)),
                                min_gap=int(self.settings.get("min_gap", 120)))
