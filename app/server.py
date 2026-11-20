@@ -29,8 +29,8 @@ def make_handler(mgr: Manager, token: str | None):
 
         # ---- Hilfen ----
         def _auth(self) -> bool:
-            if not token:
-                return True
+            if not token or self.client_address[0] in ("127.0.0.1", "::1"):
+                return True  # am Mac selbst kein Code noetig, nur fuer Geraete im WLAN
             q = parse_qs(urlparse(self.path).query)
             cookie = self.headers.get("Cookie", "")
             return q.get("k", [""])[0] == token or f"cf={token}" in cookie
