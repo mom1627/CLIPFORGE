@@ -19,7 +19,7 @@ from tiktok import TikTok, TikTokError  # noqa: E402
 
 HOME = Path(os.getenv("CLIPFORGE_HOME", Path.home() / "CLIPFORGE"))
 NAME = re.compile(r"^[a-z0-9_]{3,25}$")
-DEFAULTS = {"channels": [], "auto_watch": True, "max_parallel": 2, "spike_db": 7, "chat_ratio": 2.5,
+DEFAULTS = {"channels": [], "auto_watch": True, "max_parallel": 6, "spike_db": 7, "chat_ratio": 2.5,
             "min_gap": 120, "pre_seconds": 38, "captions": True, "max_clips_per_stream": 20,
             "vod_hours": 48, "vod_max_clips": 5, "vod_title_filter": "", "tiktok_auto": False}
 
