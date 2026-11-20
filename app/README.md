@@ -22,6 +22,15 @@ http://127.0.0.1:8787. Im Terminal steht zusätzlich ein Link mit Zugangscode f�
   (inoffizieller Twitch-Web-Zugang, vom Nutzer erlaubt; kann sich ändern) und lädt nur die 60-s-Stücke.
 - **Clips:** liegen in `~/CLIPFORGE/clips/` und in der Oberfläche mit Vorschau, Download, Löschen.
 
+## TikTok
+- In https://developers.tiktok.com eine App anlegen, Produkte **Login Kit** und **Content Posting API** hinzufügen,
+  Scope **video.upload** aktivieren, Redirect-URI `http://localhost:8787/tiktok/callback` eintragen.
+- Client Key/Secret in `~/CLIPFORGE/.env` (`TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`), App neu starten.
+- Oben rechts „Mit TikTok verbinden“ (am Mac, nicht am iPhone). Danach pro Clip „→ TikTok“ oder in den
+  Einstellungen „Neue Clips automatisch zu TikTok“.
+- Clips landen als **Entwurf in deiner TikTok-Inbox** (Benachrichtigung in der App). Dort Beschreibung/Sound setzen und posten.
+  Direkt öffentlich posten erlaubt TikTok erst nach einer Prüfung (Audit) der App; vorher nur privat.
+
 ## Grenzen
 - Facecam-Position je Streamer steht in `config/cams.json` (Anteile x,y,Breite,Höhe). Standard: unten rechts.
 - Mac muss wach und online sein (`start.command` verhindert den Ruhezustand, solange die App läuft).

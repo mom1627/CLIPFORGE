@@ -15,12 +15,13 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import live_capture as lc  # noqa: E402
 
 from live import LiveWorker  # noqa: E402
+from tiktok import TikTok, TikTokError  # noqa: E402
 
 HOME = Path(os.getenv("CLIPFORGE_HOME", Path.home() / "CLIPFORGE"))
 NAME = re.compile(r"^[a-z0-9_]{3,25}$")
 DEFAULTS = {"channels": [], "auto_watch": True, "max_parallel": 2, "spike_db": 7, "chat_ratio": 2.5,
             "min_gap": 120, "pre_seconds": 38, "captions": True, "max_clips_per_stream": 20,
-            "vod_hours": 48, "vod_max_clips": 5, "vod_title_filter": ""}
+            "vod_hours": 48, "vod_max_clips": 5, "vod_title_filter": "", "tiktok_auto": False}
 
 
 def load_env(path: Path):
@@ -35,7 +36,7 @@ def load_env(path: Path):
 
 
 class Manager:
-    def __init__(self, home: Path = HOME):
+    def __init__(self, home: Path = HOME, port: int = 8787):
         self.home = home
         self.clips_dir = home / "clips"
         self.work_dir = home / "work"
@@ -51,6 +52,8 @@ class Manager:
         self.lock = threading.Lock()
         self.running = True
         self.poller = threading.Thread(target=self._poll_loop, daemon=True)
+        self.tiktok = TikTok(home, f"http://localhost:{port}/tiktok/callback")
+        self.uploads: dict[str, str] = {}
 
     # ---------- Konfiguration ----------
     def save(self):
@@ -89,7 +92,7 @@ class Manager:
                 return False
             if sum(1 for x in self.workers.values() if x.is_alive()) >= int(self.cfg["max_parallel"]):
                 raise RuntimeError(f"Maximal {self.cfg['max_parallel']} Streams gleichzeitig")
-            w = LiveWorker(channel, self.clips_dir, self.work_dir, self._settings())
+            w = LiveWorker(channel, self.clips_dir, self.work_dir, self._settings(), on_clip=self._new_clip)
             self.workers[channel] = w
             w.start()
             return True
@@ -141,18 +144,20 @@ class Manager:
             for line in p.stdout:
                 self.vod_job["log"] = (self.vod_job["log"] + line)[-4000:]
             p.wait()
-            self._write_vod_meta()
+            for name in self._write_vod_meta():
+                self._new_clip({"file": name})
             self.vod_job["state"] = "fertig" if p.returncode == 0 else f"beendet (Code {p.returncode})"
         threading.Thread(target=job, daemon=True).start()
 
-    def _write_vod_meta(self):
+    def _write_vod_meta(self) -> list[str]:
         rep = self.clips_dir / "vod_report.json"
+        made = []
         if not rep.exists():
-            return
+            return made
         try:
             data = json.loads(rep.read_text(encoding="utf-8"))
         except ValueError:
-            return
+            return made
         for c in data.get("clips", []):
             f = self.clips_dir / c.get("file", "")
             if f.exists():
@@ -160,6 +165,41 @@ class Manager:
                         "reason": "VOD-Highlight", "hook": c.get("hook", ""), "vod_link": c.get("vod_link", ""),
                         "created": c.get("vod_timestamp", "")}
                 f.with_suffix(".json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+                made.append(f.name)
+        return made
+
+    # ---------- TikTok ----------
+    def _new_clip(self, meta: dict):
+        if self.cfg.get("tiktok_auto") and self.tiktok.connected():
+            self.upload_tiktok(meta["file"])
+
+    def _set_meta(self, name: str, **kv):
+        j = (self.clips_dir / name).with_suffix(".json")
+        meta = {}
+        if j.exists():
+            try:
+                meta = json.loads(j.read_text(encoding="utf-8"))
+            except ValueError:
+                pass
+        meta.update(kv)
+        j.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def upload_tiktok(self, name: str):
+        if "/" in name or not name.endswith(".mp4") or not (self.clips_dir / name).exists():
+            raise ValueError("Clip nicht gefunden")
+        if self.uploads.get(name) == "lädt hoch":
+            return
+        self.uploads[name] = "lädt hoch"
+
+        def job():
+            try:
+                r = self.tiktok.upload_draft(self.clips_dir / name)
+                txt = "in TikTok-Inbox" if r["status"] == "SEND_TO_USER_INBOX" else r["status"]
+                self.uploads[name] = txt
+                self._set_meta(name, tiktok=txt, tiktok_publish_id=r["publish_id"])
+            except (TikTokError, OSError) as exc:
+                self.uploads[name] = f"Fehler: {exc}"[:160]
+        threading.Thread(target=job, daemon=True).start()
 
     # ---------- Clips ----------
     def clips(self) -> list[dict]:
@@ -172,8 +212,11 @@ class Manager:
                     meta = json.loads(j.read_text(encoding="utf-8"))
                 except ValueError:
                     pass
-            out.append({"file": f.name, "size_mb": round(f.stat().st_size / 1e6, 1),
-                        "time": time.strftime("%d.%m. %H:%M", time.localtime(f.stat().st_mtime)), **meta})
+            row = {"file": f.name, "size_mb": round(f.stat().st_size / 1e6, 1),
+                   "time": time.strftime("%d.%m. %H:%M", time.localtime(f.stat().st_mtime)), **meta}
+            if f.name in self.uploads:
+                row["tiktok"] = self.uploads[f.name]
+            out.append(row)
         return out
 
     def delete_clip(self, name: str):
@@ -187,4 +230,5 @@ class Manager:
                               if c in self.workers else {})} for c in self.cfg["channels"]],
                 "settings": {k: v for k, v in self.cfg.items() if k != "channels"},
                 "vod": self.vod_job, "clips": self.clips(),
-                "twitch_keys": bool(os.getenv("TWITCH_CLIENT_ID") and os.getenv("TWITCH_CLIENT_SECRET"))}
+                "twitch_keys": bool(os.getenv("TWITCH_CLIENT_ID") and os.getenv("TWITCH_CLIENT_SECRET")),
+                "tiktok": {"configured": self.tiktok.configured(), "connected": self.tiktok.connected()}}

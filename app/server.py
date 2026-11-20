@@ -96,6 +96,28 @@ def make_handler(mgr: Manager, token: str | None):
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 return self.wfile.write(body)
+            if u.path == "/tiktok/login":
+                if self.client_address[0] not in ("127.0.0.1", "::1"):
+                    return self._json({"error": "TikTok bitte am Mac verbinden"}, 403)
+                try:
+                    url = mgr.tiktok.login_url()
+                except Exception as exc:
+                    return self._json({"error": str(exc)}, 400)
+                self.send_response(302); self.send_header("Location", url); self.end_headers(); return
+            if u.path == "/tiktok/callback":
+                q = parse_qs(u.query)
+                msg = "TikTok verbunden ✓"
+                try:
+                    if "error" in q:
+                        raise RuntimeError(q.get("error_description", q["error"])[0])
+                    mgr.tiktok.finish_login(q.get("code", [""])[0], q.get("state", [""])[0])
+                except Exception as exc:
+                    msg = "TikTok-Login fehlgeschlagen: " + str(exc)
+                body = (f"<meta charset=utf-8><meta http-equiv=refresh content='2;url=/'>"
+                        f"<body style='font:18px system-ui;background:#0d0e12;color:#eee;padding:40px'>"
+                        f"{msg.replace('<', '&lt;')}</body>").encode()
+                self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body))); self.end_headers(); return self.wfile.write(body)
             if u.path == "/api/state":
                 return self._json(mgr.state())
             if u.path.startswith("/clips/"):
@@ -124,6 +146,12 @@ def make_handler(mgr: Manager, token: str | None):
                 if u.path == "/api/vod":
                     mgr.run_vods(d.get("channels") or None)
                     return self._json({"ok": True})
+                if u.path == "/api/tiktok/upload":
+                    mgr.upload_tiktok(d["file"])
+                    return self._json({"ok": True})
+                if u.path == "/api/tiktok/disconnect":
+                    mgr.tiktok.disconnect()
+                    return self._json({"ok": True})
                 if u.path == "/api/delete":
                     mgr.delete_clip(d["file"])
                     return self._json({"ok": True})
@@ -150,7 +178,7 @@ def main():
     ap.add_argument("--lan", action="store_true", help="auch im WLAN erreichbar (iPhone), mit Zugangscode")
     ap.add_argument("--no-poll", action="store_true", help="keine automatische Live-Pruefung (Test)")
     a = ap.parse_args()
-    mgr = Manager()
+    mgr = Manager(port=a.port)
     if not a.no_poll:
         mgr.start()
     token = secrets.token_urlsafe(8) if a.lan else None
@@ -160,6 +188,7 @@ def main():
     if a.lan:
         print(f"iPhone (gleiches WLAN):  http://{lan_ip()}:{a.port}/?k={token}")
     print(f"Clips-Ordner: {mgr.clips_dir}")
+    print(f"TikTok-Redirect-URI (in der TikTok-Developer-App eintragen): http://localhost:{a.port}/tiktok/callback")
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

@@ -20,6 +20,10 @@ if [ ! -f "$HOME_DIR/.env" ]; then
 # Twitch-App-Zugang (https://dev.twitch.tv/console/apps). Nur fuer VOD-Clips noetig.
 TWITCH_CLIENT_ID=
 TWITCH_CLIENT_SECRET=
+# TikTok-App (https://developers.tiktok.com): Produkte Login Kit + Content Posting API, Scope video.upload
+# Redirect-URI: http://localhost:8787/tiktok/callback
+TIKTOK_CLIENT_KEY=
+TIKTOK_CLIENT_SECRET=
 ENV
   chmod 600 "$HOME_DIR/.env"
 fi

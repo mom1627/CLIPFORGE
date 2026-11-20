@@ -39,7 +39,7 @@ details summary{cursor:pointer;color:var(--mut)}
 </style>
 </head>
 <body>
-<header><div class="logo">CLIP<b>FORGE</b></div><span class="pill" id="keys">…</span><span class="pill" id="count">0 Clips</span></header>
+<header><div class="logo">CLIP<b>FORGE</b></div><span class="pill" id="keys">…</span><span class="pill" id="count">0 Clips</span><span id="tt" style="margin-left:auto"></span></header>
 <main>
   <section>
     <h2>Streamer</h2>
@@ -77,7 +77,7 @@ details summary{cursor:pointer;color:var(--mut)}
 <script>
 const SET=[["auto_watch","Live automatisch überwachen","bool"],["max_parallel","Streams gleichzeitig","num"],
 ["chat_ratio","Chat-Spitze ab (x normal)","num"],["spike_db","Ton-Spitze ab (dB)","num"],["min_gap","Mindestabstand Clips (s)","num"],
-["captions","Hook + Untertitel","bool"],["vod_hours","VODs der letzten Stunden","num"],["vod_max_clips","Max. Clips pro VOD-Auftrag","num"],
+["captions","Hook + Untertitel","bool"],["tiktok_auto","Neue Clips automatisch zu TikTok (Entwurf)","bool"],["vod_hours","VODs der letzten Stunden","num"],["vod_max_clips","Max. Clips pro VOD-Auftrag","num"],
 ["vod_title_filter","VOD-Titel enthält (leer = alle)","text"]];
 let S=null, shown="";
 const $=id=>document.getElementById(id);
@@ -87,18 +87,19 @@ async function load(){
   try{S=await api("/api/state")}catch(e){return}
   $("keys").textContent=S.twitch_keys?"Twitch-Schlüssel ✓":"Twitch-Schlüssel fehlen (.env)";
   $("count").textContent=S.clips.length+" Clips";
+  const T=S.tiktok;$("tt").innerHTML=!T.configured?`<span class="pill">TikTok-Schlüssel fehlen (.env)</span>`:T.connected?`<span class="pill" style="color:var(--ok)">TikTok verbunden</span> <button onclick="ttOff()" style="padding:5px 10px">Trennen</button>`:`<a href="/tiktok/login"><button class="p" style="padding:6px 12px">Mit TikTok verbinden</button></a>`;
   if(document.activeElement!==$("chin"))$("chin").value=S.channels.map(c=>c.name).join(", ");
   $("chips").innerHTML=S.channels.map(c=>{const w=c.worker,on=w&&!["beendet","Stream beendet"].includes(w.state)&&!String(w.state).startsWith("Fehler");
     return `<div class="ch"><div class="n"><span class="dot ${c.live?"live":""}"></span>${esc(c.name)}<span class="tag">${c.live===undefined||c.live===null?"prüfe…":c.live?"LIVE":"offline"}</span></div>
     ${w?`<div class="mut">${esc(w.state)} · Chat ${w.chat_connected?"verbunden":"getrennt"} · ${w.chat_rate}/s · ${w.clips} Clips${w.last?" · zuletzt: "+esc(w.last):""}</div>`:`<div class="mut">nicht überwacht</div>`}
     <div class="row">${on?`<button onclick="stopW('${c.name}')">Stoppen</button>`:`<button ${c.live?"":"disabled"} onclick="startW('${c.name}')">Jetzt überwachen</button>`}</div></div>`}).join("");
   const v=S.vod;$("vodstate").textContent=v.state+(v.started?" (seit "+v.started+")":"");$("vodbtn").disabled=v.state==="läuft";$("vodlog").textContent=v.log||"";
-  const key=S.clips.map(c=>c.file).join("|");
+  const key=S.clips.map(c=>c.file+(c.tiktok||"")).join("|")+T.connected;
   if(key!==shown){shown=key;$("noclips").style.display=S.clips.length?"none":"";
     $("clips").innerHTML=S.clips.map(c=>`<div class="clip"><video src="/clips/${encodeURIComponent(c.file)}" preload="metadata" controls playsinline></video>
     <div class="m"><div class="h">${esc(c.channel||"")} <span class="tag">${c.source==="vod"?"VOD":"Live"}</span></div>
     <div class="mut">${esc(c.reason||"")} · ${esc(c.time)} · ${c.size_mb} MB</div>${c.hook?`<div class="mut">„${esc(c.hook)}“</div>`:""}
-    <div class="a"><a href="/clips/${encodeURIComponent(c.file)}?dl=1">Download</a><button onclick="del('${esc(c.file)}')">Löschen</button></div></div></div>`).join("")}
+    ${c.tiktok?`<div class="mut">TikTok: ${esc(c.tiktok)}</div>`:""}<div class="a"><a href="/clips/${encodeURIComponent(c.file)}?dl=1">Download</a>${T.connected?`<button onclick="tt('${esc(c.file)}')" ${c.tiktok==="lädt hoch"?"disabled":""}>→ TikTok</button>`:""}<button onclick="del('${esc(c.file)}')">Löschen</button></div></div></div>`).join("")}
   if(!$("set").dataset.done){$("set").dataset.done=1;$("set").innerHTML=SET.map(([k,l,t])=>`<label>${l}${t==="bool"?`<select id="s_${k}"><option value="1">an</option><option value="0">aus</option></select>`:`<input id="s_${k}" type="${t==="num"?"number":"text"}" step="any">`}</label>`).join("");
     SET.forEach(([k,,t])=>{const e=$("s_"+k);e.value=t==="bool"?(S.settings[k]?"1":"0"):S.settings[k]})}
 }
@@ -106,6 +107,8 @@ async function saveChannels(){$("cherr").textContent="";try{await api("/api/chan
 async function startW(c){try{await api("/api/watch/start",{channel:c})}catch(e){alert(e.message)}load()}
 async function stopW(c){await api("/api/watch/stop",{channel:c});load()}
 async function runVod(){$("voderr").textContent="";try{await api("/api/vod",{})}catch(e){$("voderr").textContent=e.message}load()}
+async function tt(f){try{await api("/api/tiktok/upload",{file:f})}catch(e){alert(e.message)}shown="";load()}
+async function ttOff(){if(confirm("TikTok trennen?")){await api("/api/tiktok/disconnect",{});shown="";load()}}
 async function del(f){if(confirm("Clip löschen?")){await api("/api/delete",{file:f});shown="";load()}}
 async function saveSettings(){const d={};SET.forEach(([k,,t])=>{const v=$("s_"+k).value;d[k]=t==="bool"?v==="1":t==="num"?Number(v):v});await api("/api/settings",d);load()}
 load();setInterval(load,4000);
