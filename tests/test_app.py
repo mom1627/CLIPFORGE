@@ -53,6 +53,9 @@ class ServerTest(unittest.TestCase):
             clips.mkdir(parents=True)
             subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc=s=72x128:d=1",
                             "-pix_fmt", "yuv420p", str(clips / "clipforge_test_1.mp4")], check=True)
+            (clips / "clipforge_test_1.json").write_text('{"channel": "test"}')
+            subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc=s=72x128:d=1",
+                            "-pix_fmt", "yuv420p", str(clips / "clipforge_busy_2.mp4")], check=True)  # noch in Arbeit
             p = subprocess.Popen([sys.executable, str(ROOT / "app/server.py"), "--port", "8799", "--no-poll"], env=env,
                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             try:
@@ -62,7 +65,7 @@ class ServerTest(unittest.TestCase):
                     except OSError:
                         time.sleep(0.1)
                 st = json.load(urllib.request.urlopen("http://127.0.0.1:8799/api/state"))
-                self.assertEqual(st["clips"][0]["file"], "clipforge_test_1.mp4")
+                self.assertEqual([c["file"] for c in st["clips"]], ["clipforge_test_1.mp4"])
                 req = urllib.request.Request("http://127.0.0.1:8799/api/channels", method="POST",
                                              data=json.dumps({"channels": ["Trymacs", "https://twitch.tv/kaicenat"]}).encode())
                 self.assertEqual(json.load(urllib.request.urlopen(req))["channels"], ["trymacs", "kaicenat"])
@@ -71,6 +74,11 @@ class ServerTest(unittest.TestCase):
                 with self.assertRaises(urllib.error.HTTPError) as e:
                     urllib.request.urlopen(bad)
                 self.assertEqual(e.exception.code, 400)
+                cam = urllib.request.Request("http://127.0.0.1:8799/api/cam", method="POST",
+                                             data=json.dumps({"channel": "trymacs", "value": "unten-links"}).encode())
+                urllib.request.urlopen(cam)
+                st = json.load(urllib.request.urlopen("http://127.0.0.1:8799/api/state"))
+                self.assertEqual(st["channels"][0]["cam"], [0.0, 0.60, 0.26, 0.40])
                 r = urllib.request.urlopen(urllib.request.Request("http://127.0.0.1:8799/clips/clipforge_test_1.mp4",
                                                                   headers={"Range": "bytes=0-99"}))
                 self.assertEqual(r.status, 206)

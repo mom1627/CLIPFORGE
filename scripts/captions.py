@@ -109,13 +109,13 @@ def probe(path: Path):
     return int(a[0]), int(a[1]), float(b)
 
 
-def add_captions(mp4: Path, channel: str, seed: str = "") -> Path:
+def add_captions(mp4: Path, channel: str, seed: str = "", split: bool | None = None) -> Path:
     """Burn hook + subtitles into mp4 (in place on success). Falls back to the original on any error."""
     try:
         w, h, d = probe(mp4)
         words, lang = transcribe(mp4)
         ass = mp4.with_suffix(".ass")
-        ass.write_text(build_ass(words, pick_hook(channel, seed or mp4.name, lang), w, h, d, split=os.getenv('VIDEO_FIT', 'split') == 'split'), encoding="utf-8")
+        ass.write_text(build_ass(words, pick_hook(channel, seed or mp4.name, lang), w, h, d, split=(os.getenv('VIDEO_FIT', 'split') == 'split') if split is None else split), encoding="utf-8")
         out = mp4.with_name(mp4.stem + "_cap.mp4")
         r = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", mp4.name,
                             "-vf", f"ass={ass.name}", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",

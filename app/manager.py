@@ -21,7 +21,7 @@ HOME = Path(os.getenv("CLIPFORGE_HOME", Path.home() / "CLIPFORGE"))
 NAME = re.compile(r"^[a-z0-9_]{3,25}$")
 DEFAULTS = {"channels": [], "auto_watch": True, "max_parallel": 6, "spike_db": 7, "chat_ratio": 2.5,
             "min_gap": 120, "pre_seconds": 38, "captions": True, "max_clips_per_stream": 20,
-            "vod_hours": 48, "vod_max_clips": 5, "vod_title_filter": "", "tiktok_auto": False}
+            "vod_hours": 48, "vod_max_clips": 5, "vod_title_filter": "", "tiktok_auto": False, "cams": {}}
 
 
 def load_env(path: Path):
@@ -75,15 +75,32 @@ class Manager:
         self.save()
         return clean
 
+    CAM_PRESETS = {"unten-rechts": [0.727, 0.60, 0.26, 0.40], "unten-links": [0.0, 0.60, 0.26, 0.40],
+                   "oben-rechts": [0.727, 0.0, 0.26, 0.40], "oben-links": [0.0, 0.0, 0.26, 0.40], "keine": "none"}
+
+    def set_cam(self, channel: str, value):
+        """value: Preset-Name, 'keine' oder [x,y,w,h] als Anteile (0..1) des Streambilds."""
+        if isinstance(value, str):
+            if value not in self.CAM_PRESETS:
+                raise ValueError("Unbekannte Facecam-Position")
+            value = self.CAM_PRESETS[value]
+        elif not (isinstance(value, list) and len(value) == 4 and all(0 <= float(v) <= 1 for v in value)):
+            raise ValueError("Facecam: [x, y, Breite, Höhe] als Werte zwischen 0 und 1")
+        self.cfg.setdefault("cams", {})[channel] = value
+        self.save()
+        w = self.workers.get(channel)
+        if w:
+            w.settings.setdefault("cams", {})[channel] = value
+
     def update_settings(self, data: dict):
         for k, v in data.items():
-            if k in DEFAULTS and k != "channels":
+            if k in DEFAULTS and k not in ("channels", "cams"):
                 self.cfg[k] = type(DEFAULTS[k])(v) if not isinstance(DEFAULTS[k], bool) else bool(v)
         self.save()
 
     # ---------- Live ----------
     def _settings(self):
-        return {k: self.cfg[k] for k in DEFAULTS}
+        return {k: (dict(self.cfg[k]) if isinstance(self.cfg[k], dict) else self.cfg[k]) for k in DEFAULTS}
 
     def start_watch(self, channel: str):
         with self.lock:
@@ -206,6 +223,8 @@ class Manager:
     def clips(self) -> list[dict]:
         out = []
         for f in sorted(self.clips_dir.glob("*.mp4"), key=lambda p: p.stat().st_mtime, reverse=True):
+            if f.stem.endswith("_cap") or (not f.with_suffix(".json").exists() and time.time() - f.stat().st_mtime < 300):
+                continue  # Clip wird gerade noch fertig bearbeitet
             meta = {}
             j = f.with_suffix(".json")
             if j.exists():
@@ -227,7 +246,7 @@ class Manager:
         (self.clips_dir / name).with_suffix(".json").unlink(missing_ok=True)
 
     def state(self) -> dict:
-        return {"channels": [{"name": c, "live": self.live.get(c), **({"worker": self.workers[c].status()}
+        return {"channels": [{"name": c, "live": self.live.get(c), "cam": self.cfg.get("cams", {}).get(c), **({"worker": self.workers[c].status()}
                               if c in self.workers else {})} for c in self.cfg["channels"]],
                 "settings": {k: v for k, v in self.cfg.items() if k != "channels"},
                 "vod": self.vod_job, "clips": self.clips(),

@@ -146,6 +146,9 @@ def make_handler(mgr: Manager, token: str | None):
                 if u.path == "/api/vod":
                     mgr.run_vods(d.get("channels") or None)
                     return self._json({"ok": True})
+                if u.path == "/api/cam":
+                    mgr.set_cam(d["channel"], d["value"])
+                    return self._json({"ok": True})
                 if u.path == "/api/tiktok/upload":
                     mgr.upload_tiktok(d["file"])
                     return self._json({"ok": True})

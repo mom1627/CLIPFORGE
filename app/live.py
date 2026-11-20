@@ -48,13 +48,16 @@ class LiveWorker(threading.Thread):
     def _make_clip(self, end: int, reason: str, strength: float):
         pre = int(self.settings.get("pre_seconds", 38))
         self.state = "schneidet Clip"
-        mp4 = monitor.build_clip(self.folder, end, pre, 0, self.clips_dir, self.channel)
+        cam = self.settings.get("cams", {}).get(self.channel)
+        fit = "blur" if cam == "none" else "split"
+        mp4 = monitor.build_clip(self.folder, end, pre, 0, self.clips_dir, self.channel,
+                                 cam_box=cam if isinstance(cam, list) else None, fit=fit)
         if not mp4:
             self.state = "nimmt auf"
             return
         if self.settings.get("captions", True):
             self.state = "Untertitel"
-            mp4 = captions.add_captions(mp4, self.channel, f"{end}")
+            mp4 = captions.add_captions(mp4, self.channel, f"{end}", split=(fit == "split"))
             mp4.with_suffix(".ass").unlink(missing_ok=True)
         meta = {"file": mp4.name, "channel": self.channel, "source": "live", "reason": reason,
                 "strength": strength, "created": datetime.now().isoformat(timespec="seconds")}

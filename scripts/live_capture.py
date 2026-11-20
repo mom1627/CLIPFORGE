@@ -149,17 +149,18 @@ def choose_start(source: Path, duration: float, clip_seconds: int) -> tuple[floa
     score, best = max(scored, key=lambda item: item[0])
     return round(best, 1), score
 
-def render_vertical(source: Path, dest: Path, start: float, clip_seconds: int, duration: float) -> None:
+def render_vertical(source: Path, dest: Path, start: float, clip_seconds: int, duration: float,
+                    cam_box: list | None = None, fit: str | None = None) -> None:
     width = env_int("VIDEO_WIDTH", 720, 360, 1080)
     # Force even pixel width for h264
     width = width // 2 * 2
     height = round(width * 16 / 9) // 2 * 2
     # Keep full game visible; blurred sides fill 9:16 rather than stretching/cropping content.
-    fit = os.getenv("VIDEO_FIT", "split")
+    fit = fit or os.getenv("VIDEO_FIT", "split")
     if fit == "split":  # oben Facecam, unten Gameplay (4:5-Ausschnitt), Hook sitzt an der Naht
         top_h = (height - (width * 5 // 4 // 2 * 2)) if os.getenv('GAMEPLAY_ASPECT') == '4:5' else round(height * 0.40) // 2 * 2
         bot_h = height - top_h
-        cam = [float(v) for v in (os.getenv("CAM_BOX") or "0.727,0.60,0.26,0.40").split(",")]
+        cam = [float(v) for v in cam_box] if cam_box else [float(v) for v in (os.getenv("CAM_BOX") or "0.727,0.60,0.26,0.40").split(",")]
         cx = min(1.0, max(0.0, float(os.getenv("CROP_X", "0.45") or 0.45)))
         gw = f"ih*{width}/{bot_h}"
         filt = (

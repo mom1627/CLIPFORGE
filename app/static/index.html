@@ -92,6 +92,7 @@ async function load(){
   $("chips").innerHTML=S.channels.map(c=>{const w=c.worker,on=w&&!["beendet","Stream beendet"].includes(w.state)&&!String(w.state).startsWith("Fehler");
     return `<div class="ch"><div class="n"><span class="dot ${c.live?"live":""}"></span>${esc(c.name)}<span class="tag">${c.live===undefined||c.live===null?"prüfe…":c.live?"LIVE":"offline"}</span></div>
     ${w?`<div class="mut">${esc(w.state)} · Chat ${w.chat_connected?"verbunden":"getrennt"} · ${w.chat_rate}/s · ${w.clips} Clips${w.last?" · zuletzt: "+esc(w.last):""}</div>`:`<div class="mut">nicht überwacht</div>`}
+    <div class="row"><select onchange="setCam('${c.name}',this.value)" title="Wo sitzt die Facecam im Stream?">${[["unten-rechts","Facecam unten rechts"],["unten-links","Facecam unten links"],["oben-rechts","Facecam oben rechts"],["oben-links","Facecam oben links"],["keine","keine Facecam"]].map(([v,l])=>`<option value="${v}" ${camName(c.cam)===v?"selected":""}>${l}</option>`).join("")}</select></div>
     <div class="row">${on?`<button onclick="stopW('${c.name}')">Stoppen</button>`:`<button ${c.live?"":"disabled"} onclick="startW('${c.name}')">Jetzt überwachen</button>`}</div></div>`}).join("");
   const v=S.vod;$("vodstate").textContent=v.state+(v.started?" (seit "+v.started+")":"");$("vodbtn").disabled=v.state==="läuft";$("vodlog").textContent=v.log||"";
   const key=S.clips.map(c=>c.file+(c.tiktok||"")).join("|")+T.connected;
@@ -104,6 +105,8 @@ async function load(){
     SET.forEach(([k,,t])=>{const e=$("s_"+k);e.value=t==="bool"?(S.settings[k]?"1":"0"):S.settings[k]})}
 }
 async function saveChannels(){$("cherr").textContent="";try{await api("/api/channels",{channels:$("chin").value.split(/[,;\n]+/)});load()}catch(e){$("cherr").textContent=e.message}}
+function camName(v){if(v==="none")return"keine";if(!Array.isArray(v))return"unten-rechts";return (v[1]<0.3?"oben-":"unten-")+(v[0]<0.3?"links":"rechts")}
+async function setCam(c,v){try{await api("/api/cam",{channel:c,value:v})}catch(e){alert(e.message)}}
 async function startW(c){try{await api("/api/watch/start",{channel:c})}catch(e){alert(e.message)}load()}
 async function stopW(c){await api("/api/watch/stop",{channel:c});load()}
 async function runVod(){$("voderr").textContent="";try{await api("/api/vod",{})}catch(e){$("voderr").textContent=e.message}load()}

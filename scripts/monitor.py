@@ -95,7 +95,8 @@ def clip_range(end_s: int, pre: int):
     return start, start + CLIP_LEN
 
 
-def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, channel: str):
+def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, channel: str,
+               cam_box: list | None = None, fit: str | None = None):
     """Cut exactly 60 s from consecutive segments and render 9:16."""
     start_abs, stop_abs = clip_range(end_s, pre)
     first, last = start_abs // SEG, (stop_abs - 1) // SEG
@@ -115,8 +116,8 @@ def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, ch
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     dest = dest_dir / f"clipforge_{channel}_{stamp}.mp4"
     cams = json.loads(Path(__file__).resolve().parent.parent.joinpath('config/cams.json').read_text())
-    os.environ['CAM_BOX'] = ','.join(str(v) for v in cams.get(channel, cams['default']))
-    lc.render_vertical(joined, dest, float(off), length, off + length + 5)
+    box = cam_box or cams.get(channel, cams['default'])
+    lc.render_vertical(joined, dest, float(off), length, off + length + 5, cam_box=box, fit=fit)
     joined.unlink(missing_ok=True)
     return dest
 
