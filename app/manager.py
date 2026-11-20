@@ -16,12 +16,14 @@ import live_capture as lc  # noqa: E402
 
 from live import LiveWorker  # noqa: E402
 from tiktok import TikTok, TikTokError  # noqa: E402
+import publisher  # noqa: E402
 
 HOME = Path(os.getenv("CLIPFORGE_HOME", Path.home() / "CLIPFORGE"))
 NAME = re.compile(r"^[a-z0-9_]{3,25}$")
 DEFAULTS = {"channels": [], "auto_watch": True, "max_parallel": 6, "spike_db": 7, "chat_ratio": 2.5,
             "min_gap": 120, "pre_seconds": 38, "captions": True, "max_clips_per_stream": 20,
-            "vod_hours": 48, "vod_max_clips": 5, "vod_title_filter": "", "tiktok_auto": False, "cams": {}}
+            "vod_hours": 48, "vod_max_clips": 5, "vod_title_filter": "", "tiktok_auto": False, "cams": {}, "auto_publish": False, "max_posts_per_day": 4,
+            "caption_tags": publisher.DEFAULT_TAGS}
 
 
 def load_env(path: Path):
@@ -188,8 +190,52 @@ class Manager:
 
     # ---------- TikTok ----------
     def _new_clip(self, meta: dict):
-        if self.cfg.get("tiktok_auto") and self.tiktok.connected():
+        if self.cfg.get("auto_publish") and publisher.configured() and self._posts_today() < int(self.cfg["max_posts_per_day"]):
+            self.publish(meta["file"])
+        elif self.cfg.get("tiktok_auto") and self.tiktok.connected():
             self.upload_tiktok(meta["file"])
+
+    # ---------- Öffentlich posten (OmniSocials) ----------
+    def _posts_today(self) -> int:
+        today = time.strftime("%Y-%m-%d")
+        n = 0
+        for j in self.clips_dir.glob("*.json"):
+            try:
+                if str(json.loads(j.read_text(encoding="utf-8")).get("posted_at", "")).startswith(today):
+                    n += 1
+            except ValueError:
+                pass
+        return n
+
+    def caption_for(self, name: str) -> str:
+        meta = {}
+        j = (self.clips_dir / name).with_suffix(".json")
+        if j.exists():
+            try:
+                meta = json.loads(j.read_text(encoding="utf-8"))
+            except ValueError:
+                pass
+        return publisher.build_caption(meta.get("channel", ""), meta.get("hook", ""), self.cfg.get("caption_tags"))
+
+    def publish(self, name: str, caption: str | None = None):
+        if "/" in name or not name.endswith(".mp4") or not (self.clips_dir / name).exists():
+            raise ValueError("Clip nicht gefunden")
+        if not publisher.configured():
+            raise RuntimeError("OMNISOCIALS_API_KEY fehlt in ~/CLIPFORGE/.env")
+        if self.uploads.get(name) == "wird gepostet":
+            return
+        text = (caption or self.caption_for(name)).strip()
+        self.uploads[name] = "wird gepostet"
+
+        def job():
+            try:
+                r = publisher.publish(self.clips_dir / name, text)
+                self.uploads[name] = "gepostet ✓"
+                self._set_meta(name, tiktok="gepostet ✓", posted_at=time.strftime("%Y-%m-%d %H:%M"),
+                               caption=text, omnisocials_post=r.get("post_id"))
+            except (publisher.PublishError, OSError) as exc:
+                self.uploads[name] = f"Fehler: {exc}"[:160]
+        threading.Thread(target=job, daemon=True).start()
 
     def _set_meta(self, name: str, **kv):
         j = (self.clips_dir / name).with_suffix(".json")
@@ -251,4 +297,5 @@ class Manager:
                 "settings": {k: v for k, v in self.cfg.items() if k != "channels"},
                 "vod": self.vod_job, "clips": self.clips(),
                 "twitch_keys": bool(os.getenv("TWITCH_CLIENT_ID") and os.getenv("TWITCH_CLIENT_SECRET")),
-                "tiktok": {"configured": self.tiktok.configured(), "connected": self.tiktok.connected()}}
+                "tiktok": {"configured": self.tiktok.configured(), "connected": self.tiktok.connected()},
+                "publisher": {"configured": publisher.configured(), "posts_today": self._posts_today()}}

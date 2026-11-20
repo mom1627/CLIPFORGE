@@ -184,8 +184,17 @@ def main() -> int:
                                 mp4 = captions.add_captions(mp4, live, str(end))
                             clips += 1; session["clips"] += 1
                             ok = publish(mp4)
+                            posted = ""
+                            if os.getenv("AUTO_PUBLISH") == "1" and publisher.configured() and \
+                                    sum(1 for c in report["clips"] if c.get("posted")) < int(env_f("MAX_POSTS", 3)):
+                                try:
+                                    r = publisher.publish(mp4, publisher.build_caption(live))
+                                    posted = r.get("post_id") or "ok"
+                                    print(f"Auf TikTok veröffentlicht: {mp4.name}", flush=True)
+                                except publisher.PublishError as exc:
+                                    print("TikTok-Post fehlgeschlagen:", exc, flush=True)
                             report["clips"].append({"file": mp4.name, "channel": live, "second": end,
-                                                    "bytes": mp4.stat().st_size, "published": ok})
+                                                    "bytes": mp4.stat().st_size, "published": ok, "posted": posted})
                             print(f"MP4 fertig: {mp4.name} (veröffentlicht={ok})", flush=True)
                 for old in segs[:max(0, done - 12)]:  # rolling buffer ~6 min
                     old.unlink(missing_ok=True)

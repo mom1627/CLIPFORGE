@@ -24,6 +24,8 @@ TWITCH_CLIENT_SECRET=
 # Redirect-URI: http://localhost:8787/tiktok/callback
 TIKTOK_CLIENT_KEY=
 TIKTOK_CLIENT_SECRET=
+# OmniSocials-API-Schlüssel (öffentlich auf TikTok posten): https://app.omnisocials.com/settings/api
+OMNISOCIALS_API_KEY=
 ENV
   chmod 600 "$HOME_DIR/.env"
 fi

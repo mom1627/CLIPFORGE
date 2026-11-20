@@ -27,7 +27,7 @@ concurrency:
 jobs:
   monitor:
     # Geplante Läufe nur, wenn das Repo öffentlich ist; sonst würde das private Minuten-Kontingent (2000/Monat) aufgebraucht.
-    if: github.event_name == 'workflow_dispatch' || github.event.repository.private == false
+    if: github.event_name == 'workflow_dispatch' || github.event.repository.private == false || vars.CLOUD_ALWAYS == 'on'
     runs-on: ubuntu-latest
     timeout-minutes: 350
     env:
@@ -42,6 +42,10 @@ jobs:
       RELEASE_TAG: clips
       MAX_CLIPS: ${{ inputs.max_clips || '12' }}
       CAPTIONS: "1"
+      OMNISOCIALS_API_KEY: ${{ secrets.OMNISOCIALS_API_KEY }}
+      AUTO_PUBLISH: ${{ vars.AUTO_PUBLISH || '0' }}
+      MAX_POSTS: ${{ vars.MAX_POSTS || '3' }}
+      CAPTION_TAGS: ${{ vars.CAPTION_TAGS }}
       WHISPER_MODEL: ${{ vars.WHISPER_MODEL || 'small' }}
       HOOKS: ${{ vars.HOOKS }}
     steps:

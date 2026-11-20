@@ -163,6 +163,11 @@ def make_handler(mgr: Manager, token: str | None):
                 if u.path == "/api/vod":
                     mgr.run_vods(d.get("channels") or None)
                     return self._json({"ok": True})
+                if u.path == "/api/publish":
+                    mgr.publish(d["file"], d.get("caption"))
+                    return self._json({"ok": True})
+                if u.path == "/api/caption":
+                    return self._json({"caption": mgr.caption_for(d["file"])})
                 if u.path == "/api/cam":
                     mgr.set_cam(d["channel"], d["value"])
                     return self._json({"ok": True})

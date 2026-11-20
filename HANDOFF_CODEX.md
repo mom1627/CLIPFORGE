@@ -52,6 +52,12 @@ Laufzeitdaten: `~/CLIPFORGE/clips/` (MP4 + JSON je Clip), `~/CLIPFORGE/config.js
 - **C:** TikTok-Audit nur, wenn das Produkt ehrlich in eine zulässige Form passt (z. B. Tool für Streamer,
   die ihre **eigenen** Streams clippen). Für das aktuelle Konzept nicht realistisch.
 
+## Update 20.11. 19:00 – Weg B eingebaut (OmniSocials)
+- `scripts/publisher.py`: Upload (base64) + `posts/create-and-publish` als TikTok-Reel, öffentlich, mit Beschreibung/Hashtags. Tests: `tests/test_publisher.py` (Fake-Server). **Gegen echtes OmniSocials noch nicht getestet** (API-Key fehlt).
+- Mac-App: Knopf „Veröffentlichen“ je Clip (Beschreibung editierbar), Einstellung „automatisch öffentlich posten“ + max. Posts/Tag + Hashtags.
+- GitHub `monitor.yml`: Secret `OMNISOCIALS_API_KEY`, Variablen `AUTO_PUBLISH=1`, `MAX_POSTS`, `CAPTION_TAGS`; Zeitplan alle 6 h, läuft bei privatem Repo nur mit Variable `CLOUD_ALWAYS=on` (verbraucht Minuten).
+- Doppelte Posts vermeiden: Wenn die Mac-App läuft, GitHub-Workflow „Live-Monitor“ deaktivieren (oder CLOUD_ALWAYS aus).
+
 ## Nächste Schritte (Reihenfolge)
 1. Untertitel-Fix mit Pillow (Problem 1), Test mit echtem Clip auf dem Mac.
 2. Weg B prüfen und, falls passend, Planer-API in `app/manager.py` als zweites Ziel neben `upload_tiktok` einbauen
