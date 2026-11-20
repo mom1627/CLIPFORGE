@@ -65,6 +65,7 @@ def make_handler(mgr: Manager, token: str | None):
                 self.send_response(200)
             self.send_header("Content-Type", ctype)
             self.send_header("Accept-Ranges", "bytes")
+            self._cors()
             self.send_header("Content-Length", str(end - start + 1))
             if download:
                 self.send_header("Content-Disposition", f'attachment; filename="{path.name}"')
@@ -81,6 +82,22 @@ def make_handler(mgr: Manager, token: str | None):
                     except (BrokenPipeError, ConnectionResetError):
                         return
                     left -= len(chunk)
+
+        def _cors(self):
+            """Erlaubt TikTok Studio (im Browser am Mac) das Laden eines Clips zum Hochladen."""
+            origin = self.headers.get("Origin", "")
+            if origin in ("https://www.tiktok.com", "https://tiktok.com") and self.client_address[0] in ("127.0.0.1", "::1"):
+                self.send_header("Access-Control-Allow-Origin", origin)
+                self.send_header("Access-Control-Allow-Private-Network", "true")
+                self.send_header("Vary", "Origin")
+
+        def do_OPTIONS(self):
+            self.send_response(204)
+            self._cors()
+            self.send_header("Access-Control-Allow-Methods", "GET")
+            self.send_header("Access-Control-Allow-Headers", "Range")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
 
         # ---- Routen ----
         def do_GET(self):
