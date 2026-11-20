@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CLIPFORGE</title>
+<style>
+:root{--bg:#0d0e12;--panel:#16181f;--line:#262a35;--txt:#eceef3;--mut:#8b92a5;--acc:#ff3b5c;--ok:#2fd27a;--warn:#ffb020}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;padding:14px 20px;background:rgba(13,14,18,.9);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.logo{font-weight:800;letter-spacing:.08em}.logo b{color:var(--acc)}
+.pill{white-space:nowrap;font-size:12px;padding:3px 9px;border-radius:99px;background:var(--panel);border:1px solid var(--line);color:var(--mut)}
+main{max-width:1180px;margin:0 auto;padding:20px;display:grid;gap:18px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--mut);margin:0 0 12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,select{background:#0f1116;border:1px solid var(--line);color:var(--txt);border-radius:9px;padding:9px 11px;font:inherit}
+input[type=text]{flex:1;min-width:200px}
+button{background:#232734;color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer}
+button.p{background:var(--acc);border-color:var(--acc)}button:disabled{opacity:.5;cursor:default}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-top:12px}
+.ch{border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:6px}
+.ch .n{font-weight:700;display:flex;align-items:center;gap:8px}
+.dot{width:9px;height:9px;border-radius:50%;background:#444}.dot.live{background:var(--acc);box-shadow:0 0 0 4px rgba(255,59,92,.18)}
+.mut{color:var(--mut);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.clip{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#0f1116;display:flex;flex-direction:column}
+.clip video{width:100%;aspect-ratio:9/16;background:#000;display:block}
+.clip .m{padding:10px;display:grid;gap:6px}.clip .h{font-weight:600;font-size:14px}
+.clip .a{display:flex;gap:6px}.clip .a a,.clip .a button{flex:1;text-align:center;text-decoration:none;font-size:13px;padding:8px}
+.clip .a a{background:var(--acc);color:#fff;border-radius:9px;font-weight:600}
+.tag{font-size:11px;padding:2px 7px;border-radius:99px;background:#232734;color:var(--mut)}
+pre{background:#0f1116;border:1px solid var(--line);border-radius:9px;padding:10px;max-height:180px;overflow:auto;font-size:12px;color:var(--mut);white-space:pre-wrap}
+.err{color:var(--acc);font-size:13px;min-height:1em}
+details summary{cursor:pointer;color:var(--mut)}
+.set{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:10px}
+.set label{display:grid;gap:4px;font-size:13px;color:var(--mut)}
+@media (max-width:600px){main{padding:12px}.grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header><div class="logo">CLIP<b>FORGE</b></div><span class="pill" id="keys">…</span><span class="pill" id="count">0 Clips</span></header>
+<main>
+  <section>
+    <h2>Streamer</h2>
+    <div class="row">
+      <input type="text" id="chin" placeholder="Twitch-Logins, mit Komma: kaicenat, trymacs, montanablack88">
+      <button class="p" onclick="saveChannels()">Speichern</button>
+    </div>
+    <div class="err" id="cherr"></div>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <section>
+    <h2>Vergangene Streams (VODs)</h2>
+    <div class="row">
+      <button class="p" id="vodbtn" onclick="runVod()">Beste Momente aus den letzten Streams clippen</button>
+      <span class="mut" id="vodstate"></span>
+    </div>
+    <div class="err" id="voderr"></div>
+    <details><summary>Protokoll</summary><pre id="vodlog"></pre></details>
+  </section>
+
+  <section>
+    <h2>Clips</h2>
+    <div class="grid" id="clips"></div>
+    <p class="mut" id="noclips">Noch keine Clips. Sobald ein Streamer live ist und der Chat ausrastet, erscheinen sie hier.</p>
+  </section>
+
+  <section>
+    <details><summary>Einstellungen</summary>
+      <div class="set" id="set"></div>
+      <div class="row" style="margin-top:10px"><button onclick="saveSettings()">Einstellungen speichern</button></div>
+    </details>
+  </section>
+</main>
+<script>
+const SET=[["auto_watch","Live automatisch überwachen","bool"],["max_parallel","Streams gleichzeitig","num"],
+["chat_ratio","Chat-Spitze ab (x normal)","num"],["spike_db","Ton-Spitze ab (dB)","num"],["min_gap","Mindestabstand Clips (s)","num"],
+["captions","Hook + Untertitel","bool"],["vod_hours","VODs der letzten Stunden","num"],["vod_max_clips","Max. Clips pro VOD-Auftrag","num"],
+["vod_title_filter","VOD-Titel enthält (leer = alle)","text"]];
+let S=null, shown="";
+const $=id=>document.getElementById(id);
+const api=(p,b)=>fetch(p,b?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}:{}).then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j});
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+async function load(){
+  try{S=await api("/api/state")}catch(e){return}
+  $("keys").textContent=S.twitch_keys?"Twitch-Schlüssel ✓":"Twitch-Schlüssel fehlen (.env)";
+  $("count").textContent=S.clips.length+" Clips";
+  if(document.activeElement!==$("chin"))$("chin").value=S.channels.map(c=>c.name).join(", ");
+  $("chips").innerHTML=S.channels.map(c=>{const w=c.worker,on=w&&!["beendet","Stream beendet"].includes(w.state)&&!String(w.state).startsWith("Fehler");
+    return `<div class="ch"><div class="n"><span class="dot ${c.live?"live":""}"></span>${esc(c.name)}<span class="tag">${c.live===undefined||c.live===null?"prüfe…":c.live?"LIVE":"offline"}</span></div>
+    ${w?`<div class="mut">${esc(w.state)} · Chat ${w.chat_connected?"verbunden":"getrennt"} · ${w.chat_rate}/s · ${w.clips} Clips${w.last?" · zuletzt: "+esc(w.last):""}</div>`:`<div class="mut">nicht überwacht</div>`}
+    <div class="row">${on?`<button onclick="stopW('${c.name}')">Stoppen</button>`:`<button ${c.live?"":"disabled"} onclick="startW('${c.name}')">Jetzt überwachen</button>`}</div></div>`}).join("");
+  const v=S.vod;$("vodstate").textContent=v.state+(v.started?" (seit "+v.started+")":"");$("vodbtn").disabled=v.state==="läuft";$("vodlog").textContent=v.log||"";
+  const key=S.clips.map(c=>c.file).join("|");
+  if(key!==shown){shown=key;$("noclips").style.display=S.clips.length?"none":"";
+    $("clips").innerHTML=S.clips.map(c=>`<div class="clip"><video src="/clips/${encodeURIComponent(c.file)}" preload="metadata" controls playsinline></video>
+    <div class="m"><div class="h">${esc(c.channel||"")} <span class="tag">${c.source==="vod"?"VOD":"Live"}</span></div>
+    <div class="mut">${esc(c.reason||"")} · ${esc(c.time)} · ${c.size_mb} MB</div>${c.hook?`<div class="mut">„${esc(c.hook)}“</div>`:""}
+    <div class="a"><a href="/clips/${encodeURIComponent(c.file)}?dl=1">Download</a><button onclick="del('${esc(c.file)}')">Löschen</button></div></div></div>`).join("")}
+  if(!$("set").dataset.done){$("set").dataset.done=1;$("set").innerHTML=SET.map(([k,l,t])=>`<label>${l}${t==="bool"?`<select id="s_${k}"><option value="1">an</option><option value="0">aus</option></select>`:`<input id="s_${k}" type="${t==="num"?"number":"text"}" step="any">`}</label>`).join("");
+    SET.forEach(([k,,t])=>{const e=$("s_"+k);e.value=t==="bool"?(S.settings[k]?"1":"0"):S.settings[k]})}
+}
+async function saveChannels(){$("cherr").textContent="";try{await api("/api/channels",{channels:$("chin").value.split(/[,;\n]+/)});load()}catch(e){$("cherr").textContent=e.message}}
+async function startW(c){try{await api("/api/watch/start",{channel:c})}catch(e){alert(e.message)}load()}
+async function stopW(c){await api("/api/watch/stop",{channel:c});load()}
+async function runVod(){$("voderr").textContent="";try{await api("/api/vod",{})}catch(e){$("voderr").textContent=e.message}load()}
+async function del(f){if(confirm("Clip löschen?")){await api("/api/delete",{file:f});shown="";load()}}
+async function saveSettings(){const d={};SET.forEach(([k,,t])=>{const v=$("s_"+k).value;d[k]=t==="bool"?v==="1":t==="num"?Number(v):v});await api("/api/settings",d);load()}
+load();setInterval(load,4000);
+</script>
+</body>
+</html>

@@ -391,6 +391,8 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
 def publish_results(records: list[dict]) -> None:
     if not records:
         return
+    if os.getenv("CLIPFORGE_LOCAL") == "1":  # Mac-App: Clips bleiben lokal, kein GitHub-Upload
+        return
     if not os.getenv("GITHUB_REPOSITORY") or not os.getenv("GH_TOKEN"):
         raise RuntimeError("GitHub-Release-Konfiguration fehlt")
     # Reuse monitor.publish for each verified file.
@@ -494,7 +496,10 @@ def main() -> int:
         publish_results(report["clips"])
         report["finished_at"] = stamp_now()
         report["published_count"] = sum(bool(x.get("published")) for x in report["clips"])
-        success = report["published_count"] >= min(3, max_clips)
+        if os.getenv("CLIPFORGE_LOCAL") == "1":
+            success = len(report["clips"]) > 0
+        else:
+            success = report["published_count"] >= min(3, max_clips)
         return 0 if success else 2
     except Exception as exc:
         report["fatal_error"] = clean_error(str(exc))

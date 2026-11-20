@@ -11,3 +11,4 @@ data/
 *.mp4
 *.mkv
 __pycache__/
+.env
