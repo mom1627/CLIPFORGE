@@ -16,7 +16,7 @@ on:
       max_clips:
         description: "Maximal fertige Clips insgesamt (1–12)"
         required: true
-        default: "3"
+        default: "7"
         type: string
       title_filter:
         description: "Optionaler Text im VOD-Titel (z. B. GTA); leer = alle"
@@ -42,15 +42,17 @@ jobs:
     timeout-minutes: 60
     env:
       # STRICT allowlist. Never replace this with user-supplied channels.
-      APPROVED_CHANNELS: ${{ vars.APPROVED_CHANNELS }}
-      VOD_STREAMERS: ${{ inputs.streamers || '' }}
-      VOD_HOURS: ${{ inputs.hours || '72' }}
-      MAX_CLIPS: ${{ inputs.max_clips || '3' }}
+      # CAMPAIGN_CHANNELS: Streamer offizieller Clipping-Kampagnen, denen der Nutzer beigetreten ist (z. B. lacy / Reach Clipping).
+      APPROVED_CHANNELS: ${{ vars.CAMPAIGN_CHANNELS || 'lacy' }},${{ vars.APPROVED_CHANNELS }}
+      VOD_STREAMERS: ${{ inputs.streamers || (github.event_name == 'push' && (vars.CAMPAIGN_CHANNELS || 'lacy')) || '' }}
+      VOD_HOURS: ${{ inputs.hours || '96' }}
+      MAX_CLIPS: ${{ inputs.max_clips || '7' }}
       TITLE_FILTER: ${{ inputs.title_filter || 'GTA' }}
       VODS_PER_STREAMER: "1"
       SCAN_WINDOWS: "2"
       SCAN_SECONDS: "240"
       MIN_GAP: "120"
+      CAPTION_STYLE: box
       SPIKE_DB: "6"
       VIDEO_WIDTH: "720"
       VIDEO_FIT: split
@@ -78,7 +80,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
-          python -m pip install --disable-pip-version-check --quiet "yt-dlp>=2026.10.0" "streamlink>=8,<9" "faster-whisper>=1.1,<2"
+          python -m pip install --disable-pip-version-check --quiet "yt-dlp>=2026.10.0" "streamlink>=8,<9" "faster-whisper>=1.1,<2" Pillow
       - name: Release clips pruefen oder erstellen
         run: |
           gh release view clips >/dev/null 2>&1 || gh release create clips --title "CLIPFORGE Clips" --notes "Verifizierte Clip-Exporte" --latest=false

@@ -358,19 +358,32 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
         height = int(round(width * 16 / 9)) // 2 * 2
         seam = height - (width * 5 // 4 // 2 * 2)
         subtitle_y = min(height - 220, seam + max(100, int(height * 0.16)))
-        ass = captions.build_ass(words, hook, width, height, 60, split=True,
-                                 hook_y_override=seam, subtitle_y_override=subtitle_y)
-        (tmp / "captions.ass").write_text(ass, encoding="utf-8")
-        # Mastering fixes exactly 1800 video frames at 30fps and 60s of audio.
-        # Run in temp dir so the ASS filter has an unambiguous local filename.
-        subprocess_cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-             "-i", str(Path(prelim).resolve()), "-vf",
-             "ass=captions.ass,tpad=stop_mode=clone:stop_duration=1,fps=30",
-             "-af", "apad,atrim=duration=60,asetpts=N/SR/TB",
-             "-frames:v", "1800", "-t", "60",
-             "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
-             "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
-             "-movflags", "+faststart", str(Path(output).resolve())]
+        master = ["-af", "apad,atrim=duration=60,asetpts=N/SR/TB",
+                  "-frames:v", "1800", "-t", "60",
+                  "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+                  "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
+                  "-movflags", "+faststart", str(Path(output).resolve())]
+        if os.getenv("CAPTION_STYLE", "box") == "box":
+            # Weißer Titel-Kasten + roter Zitat-Kasten (echtes Zitat) an der Naht, wie Live-Clips
+            title = captions.pick_hook(candidate.channel, filename, language)
+            quote = captions.pick_quote(words, around=float(os.getenv("HIGHLIGHT_AT", "30")))
+            lst = captions.build_overlay_frames(words, title, width, height, 60.0, tmp / "ov",
+                                                split=True, quote=quote, style="box")
+            hook = title + (" | " + quote if quote else "")
+            subprocess_cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+                 "-i", str(Path(prelim).resolve()),
+                 "-f", "concat", "-safe", "0", "-i", str(lst.resolve()),
+                 "-filter_complex", "[0:v]tpad=stop_mode=clone:stop_duration=1,fps=30[b];"
+                                    "[b][1:v]overlay=0:0:eof_action=repeat:format=auto[v]",
+                 "-map", "[v]", "-map", "0:a?"] + master
+        else:
+            ass = captions.build_ass(words, hook, width, height, 60, split=True,
+                                     hook_y_override=seam, subtitle_y_override=subtitle_y)
+            (tmp / "captions.ass").write_text(ass, encoding="utf-8")
+            # Run in temp dir so the ASS filter has an unambiguous local filename.
+            subprocess_cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+                 "-i", str(Path(prelim).resolve()), "-vf",
+                 "ass=captions.ass,tpad=stop_mode=clone:stop_duration=1,fps=30"] + master
         run = subprocess.run(subprocess_cmd, cwd=tmp, capture_output=True, text=True,
                              timeout=480)
         if run.returncode:
