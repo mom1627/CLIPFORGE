@@ -20,7 +20,7 @@ class SafetyTest(unittest.TestCase):
     def test_clean_clip_is_safe(self):
         seen = []
         ok, why = safety.check(self.mp4, detect=lambda p: seen.append(p) or [{"class": "FACE_MALE", "score": 0.9}])
-        self.assertTrue(ok); self.assertGreaterEqual(len(seen), 4)
+        self.assertTrue(ok); self.assertGreaterEqual(len(seen), 18)  # 10 s x (ganz + Gameplay)
 
     def test_two_exposed_frames_unsafe(self):
         ok, why = safety.check(self.mp4, detect=lambda p: [{"class": "FEMALE_BREAST_EXPOSED", "score": 0.8}])
@@ -28,9 +28,12 @@ class SafetyTest(unittest.TestCase):
 
     def test_single_or_weak_hit_stays_safe(self):
         calls = iter(range(100))
-        one = lambda p: [{"class": "BUTTOCKS_EXPOSED", "score": 0.9}] if next(calls) == 0 else []
+        one = lambda p: [{"class": "FEMALE_GENITALIA_EXPOSED", "score": 0.9}] if next(calls) == 0 else []
         self.assertTrue(safety.check(self.mp4, detect=one)[0])
-        self.assertTrue(safety.check(self.mp4, detect=lambda p: [{"class": "BUTTOCKS_EXPOSED", "score": 0.3}])[0])
+        # Männerbrust wird oft als Frauenbrust bis ~0,63 erkannt -> darf nicht blockieren
+        self.assertTrue(safety.check(self.mp4, detect=lambda p: [{"class": "FEMALE_BREAST_EXPOSED", "score": 0.63}])[0])
+        # Po zählt nicht (schlägt auch bei normalen Gameplay-Szenen an)
+        self.assertTrue(safety.check(self.mp4, detect=lambda p: [{"class": "BUTTOCKS_EXPOSED", "score": 0.9}])[0])
 
     def test_missing_nudenet_blocks_posting(self):
         def boom(p): raise ImportError("no nudenet")
