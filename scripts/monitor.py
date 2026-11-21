@@ -95,6 +95,14 @@ def clip_range(end_s: int, pre: int):
     return start, start + CLIP_LEN
 
 
+def clip_offset(dur: float, off: float):
+    """Start im zusammengefuegten Material, damit der Clip immer volle CLIP_LEN Sekunden hat.
+    Fehlt hinten Material (Luecke), wird der Start nach vorn verschoben; reicht es gar nicht: None."""
+    if dur < CLIP_LEN - 0.5:
+        return None
+    return float(min(off, max(0.0, dur - CLIP_LEN)))
+
+
 def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, channel: str,
                cam_box: list | None = None, fit: str | None = None):
     """Cut exactly 60 s from consecutive segments and render 9:16."""
@@ -103,6 +111,14 @@ def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, ch
     segs = [folder / f"seg_{i:05d}.ts" for i in range(first, last + 1)]
     if not all(s.exists() for s in segs):
         return None
+    # Vorheriges Material mitnehmen (falls noch im Puffer), damit bei einer Luecke hinten
+    # der Start nach vorn rutschen kann und der Clip trotzdem volle 60 s hat.
+    for _ in range(CLIP_LEN // SEG):
+        prev = folder / f"seg_{first - 1:05d}.ts"
+        if first == 0 or not prev.exists():
+            break
+        first -= 1
+        segs.insert(0, prev)
     lst = folder / "concat.txt"
     lst.write_text("".join(f"file '{s.resolve()}'\n" for s in segs))
     joined = folder / f"joined_{end_s}.ts"
@@ -112,10 +128,11 @@ def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, ch
         return None
     dur = lc.probe_duration(joined)
     off = start_abs - first * SEG
-    if dur - off < 15:  # Aufnahme zu kurz/Luecke -> kein Clip statt Absturz
+    off = clip_offset(dur, off)
+    if off is None:  # Aufnahme zu kurz/Luecke -> kein Clip statt kuerzerem Clip
         joined.unlink(missing_ok=True)
         return None
-    length = CLIP_LEN if dur - off >= CLIP_LEN - 1.5 else int(dur - off)
+    length = CLIP_LEN
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     dest = dest_dir / f"clipforge_{channel}_{stamp}.mp4"
     cams = json.loads(Path(__file__).resolve().parent.parent.joinpath('config/cams.json').read_text())
