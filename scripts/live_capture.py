@@ -30,6 +30,13 @@ def env_int(name: str, default: int, minimum: int, maximum: int) -> int:
         value = default
     return max(minimum, min(maximum, value))
 
+def game_allowed(game: str | None, allowed: list[str] | None = None) -> bool:
+    """ALLOWED_GAMES: Komma-Liste (klein/groß egal) oder '*' = alles (Gaming, IRL, Just Chatting ...)."""
+    if allowed is None:
+        allowed = [g.strip().lower() for g in os.getenv("ALLOWED_GAMES", "*").split(",") if g.strip()]
+    return game is None or "*" in allowed or game.lower() in allowed
+
+
 def channels() -> list[str]:
     # A licensed allowlist: customize before enabling unattended processing.
     raw = os.getenv("APPROVED_CHANNELS", "").strip()
@@ -321,12 +328,12 @@ def main() -> int:
     report = {"checked_at": now.isoformat(), "tested_channels": rotated,
               "status": "no_live_stream", "uploaded_to_tiktok": False}
     channel, game = None, None
-    allowed_games = [g.strip().lower() for g in os.getenv("ALLOWED_GAMES", "Grand Theft Auto VI").split(",") if g.strip()]
+    allowed_games = [g.strip().lower() for g in os.getenv("ALLOWED_GAMES", "*").split(",") if g.strip()]
     for candidate in rotated:
         if not available(candidate):
             continue
         candidate_game = twitch_game(candidate)
-        if candidate_game is not None and candidate_game.lower() not in allowed_games:
+        if not game_allowed(candidate_game, allowed_games):
             print(f"Ueberspringe {candidate}: spielt '{candidate_game or 'kein Spiel'}'.")
             continue
         channel, game = candidate, candidate_game

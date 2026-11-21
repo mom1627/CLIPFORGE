@@ -16,6 +16,28 @@ import publisher, safety
 CLIP_LEN = 60.0
 
 
+def slot_delays(n: int, now=None, slots: str | None = None, tz: str | None = None, gap: int = 60) -> list[int]:
+    """Minuten bis zu den nächsten n Post-Zeitfenstern (POST_SLOTS, Stunden in POST_TZ).
+    Standard laut Metricool-Auswertung von volta_ro: 10, 12, 16, 18, 20 Uhr (Berlin).
+    POST_SLOTS leer -> alter Modus: alle 'gap' Minuten ab jetzt + 3."""
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+    slots = os.getenv("POST_SLOTS", "10,12,16,18,20") if slots is None else slots
+    hours = sorted({int(h) for h in slots.split(",") if h.strip().isdigit() and 0 <= int(h) < 24})
+    if not hours:
+        return [3 + gap * i for i in range(n)]
+    zone = ZoneInfo(tz or os.getenv("POST_TZ", "Europe/Berlin"))
+    now = (now or datetime.now(zone)).astimezone(zone)
+    out, day = [], now.replace(hour=0, minute=0, second=0, microsecond=0)
+    while len(out) < n:
+        for h in hours:
+            t = day.replace(hour=h)
+            if t >= now + timedelta(minutes=5) and len(out) < n:
+                out.append(int((t - now).total_seconds() // 60))
+        day += timedelta(days=1)
+    return out
+
+
 def duration(mp4: Path) -> float:
     r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(mp4)],
                        capture_output=True, text=True)
@@ -62,10 +84,11 @@ def main() -> int:
         rep_path.write_text(json.dumps(report, ensure_ascii=False, indent=2))
         return 0
     failed = 0
+    delays = slot_delays(len(best), gap=gap)
     for i, c in enumerate(best):
         try:
             r = publisher.publish(out / c["file"], publisher.build_caption(c.get("channel", "")),
-                                  delay_minutes=3 + gap * i)
+                                  delay_minutes=delays[i])
             c["posted"] = r.get("post_id") or "ok"
             print(f"Geplant: {c['file']} um {r.get('due')}", flush=True)
         except publisher.PublishError as exc:

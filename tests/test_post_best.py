@@ -12,6 +12,26 @@ def make_mp4(path: Path, seconds: int):
                     "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", str(path)], check=True)
 
 
+class SlotTest(unittest.TestCase):
+    def test_next_best_slots_berlin(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        now = datetime(2026, 11, 21, 22, 30, tzinfo=ZoneInfo("Europe/Berlin"))
+        d = post_best.slot_delays(5, now=now, slots="10,12,16,18,20", tz="Europe/Berlin")
+        # morgen 10, 12, 16, 18, 20 Uhr
+        self.assertEqual(d, [690, 810, 1050, 1170, 1290])
+
+    def test_same_day_and_skip_too_close(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        now = datetime(2026, 11, 21, 11, 57, tzinfo=ZoneInfo("Europe/Berlin"))
+        d = post_best.slot_delays(2, now=now, slots="10,12,16", tz="Europe/Berlin")
+        self.assertEqual(d, [243, 1323])  # 12:00 nur 3 min weg -> 16:00, dann morgen 10:00
+
+    def test_empty_slots_old_gap_mode(self):
+        self.assertEqual(post_best.slot_delays(3, slots="", gap=60), [3, 63, 123])
+
+
 class PostBestTest(unittest.TestCase):
     def setUp(self):
         self.t = tempfile.TemporaryDirectory(); self.out = Path(self.t.name)
@@ -21,7 +41,7 @@ class PostBestTest(unittest.TestCase):
             clips.append({"file": name, "channel": "trymacs", "score": score, "posted": ""})
         (self.out / "monitor_report.json").write_text(json.dumps({"clips": clips}))
         self.env = mock.patch.dict(os.environ, {"CLIPFORGE_OUTPUT": str(self.out), "POST_BEST": "5", "MAX_POSTS": "5",
-                                                "POST_GAP_MINUTES": "60", "AUTO_PUBLISH": "1", "BUFFER_API_KEY": "x",
+                                                "POST_GAP_MINUTES": "60", "POST_SLOTS": "", "AUTO_PUBLISH": "1", "BUFFER_API_KEY": "x",
                                                 "CLOUDINARY_CLOUD_NAME": "x", "CLOUDINARY_UPLOAD_PRESET": "x"})
         self.env.start()
         self.safe = mock.patch.object(safety, "check", return_value=(True, "ok")); self.safe.start()

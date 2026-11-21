@@ -31,8 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 350
     env:
-      APPROVED_CHANNELS: ${{ inputs.channels || vars.APPROVED_CHANNELS || 'kaicenat,xqc,montanablack88,trymacs,papaplatte,caseoh_' }}
-      ALLOWED_GAMES: ${{ vars.ALLOWED_GAMES || 'Grand Theft Auto VI' }}
+      APPROVED_CHANNELS: ${{ inputs.channels || vars.APPROVED_CHANNELS || 'kaicenat,xqc,jynxzi,caseoh_,ohnepixel,hasanabi,montanablack88,trymacs,papaplatte,eliasn97,knossi,revedtv' }}
+      ALLOWED_GAMES: ${{ vars.ALLOWED_GAMES || '*' }}
       TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
       TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
       MONITOR_MINUTES: ${{ inputs.minutes || '330' }}
@@ -50,6 +50,8 @@ jobs:
       MAX_POSTS: ${{ vars.MAX_POSTS || '5' }}
       POST_BEST: ${{ vars.POST_BEST || '5' }}
       POST_GAP_MINUTES: ${{ vars.POST_GAP_MINUTES || '60' }}
+      POST_SLOTS: ${{ vars.POST_SLOTS || '10,12,16,18,20' }}
+      POST_TZ: Europe/Berlin
       CAPTION_TAGS: ${{ vars.CAPTION_TAGS }}
       WHISPER_MODEL: ${{ vars.WHISPER_MODEL || 'small' }}
       HOOKS: ${{ vars.HOOKS }}
@@ -61,7 +63,7 @@ jobs:
       - name: FFmpeg und Streamlink installieren
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
-          python -m pip install --disable-pip-version-check --quiet "streamlink>=8,<9" faster-whisper "nudenet>=3.4,<4"
+          python -m pip install --disable-pip-version-check --quiet "streamlink>=8,<9" faster-whisper "nudenet>=3.4,<4" Pillow
       - name: Whisper-Modell vorab laden
         run: python -c "from faster_whisper import WhisperModel; WhisperModel('${{ vars.WHISPER_MODEL || 'small' }}', device='cpu', compute_type='int8')"
       - name: Tests

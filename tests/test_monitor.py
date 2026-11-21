@@ -59,6 +59,26 @@ class BuildClipTest(unittest.TestCase):
                                        capture_output=True, text=True).stdout)
             self.assertAlmostEqual(dur, 60.0, delta=0.5)
 
+class GameFilterTest(unittest.TestCase):
+    def test_star_allows_everything(self):
+        import live_capture as lc
+        for g in ("Just Chatting", "IRL", "Fortnite", "Grand Theft Auto VI"):
+            self.assertTrue(lc.game_allowed(g, ["*"]))
+
+    def test_list_still_filters(self):
+        import live_capture as lc
+        self.assertTrue(lc.game_allowed("Grand Theft Auto VI", ["grand theft auto vi"]))
+        self.assertFalse(lc.game_allowed("Fortnite", ["grand theft auto vi"]))
+
+    def test_default_is_everything(self):
+        import os, live_capture as lc
+        old = os.environ.pop("ALLOWED_GAMES", None)
+        try:
+            self.assertTrue(lc.game_allowed("Just Chatting"))
+        finally:
+            if old is not None:
+                os.environ["ALLOWED_GAMES"] = old
+
 class AudioTest(unittest.TestCase):
     def test_per_second_db_from_real_ffmpeg(self):
         with tempfile.TemporaryDirectory() as t:

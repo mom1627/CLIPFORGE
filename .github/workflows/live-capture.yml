@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 9
     env:
-      APPROVED_CHANNELS: ${{ vars.APPROVED_CHANNELS || 'kaicenat,xqc,montanablack88,trymacs,papaplatte,caseoh_' }}
+      APPROVED_CHANNELS: ${{ vars.APPROVED_CHANNELS || 'kaicenat,xqc,jynxzi,caseoh_,ohnepixel,hasanabi,montanablack88,trymacs,papaplatte,eliasn97,knossi,revedtv' }}
       TARGET_STREAMER: ${{ inputs.streamer || '' }}
       CAPTURE_SECONDS: ${{ inputs.capture_seconds || '100' }}
       CLIP_SECONDS: "38"
