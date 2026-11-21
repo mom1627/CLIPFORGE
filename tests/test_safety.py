@@ -28,12 +28,17 @@ class SafetyTest(unittest.TestCase):
 
     def test_single_or_weak_hit_stays_safe(self):
         calls = iter(range(100))
-        one = lambda p: [{"class": "FEMALE_GENITALIA_EXPOSED", "score": 0.9}] if next(calls) == 0 else []
+        one = lambda p: [{"class": "FEMALE_BREAST_EXPOSED", "score": 0.9}] if next(calls) == 0 else []
         self.assertTrue(safety.check(self.mp4, detect=one)[0])
         # Männerbrust wird oft als Frauenbrust bis ~0,63 erkannt -> darf nicht blockieren
         self.assertTrue(safety.check(self.mp4, detect=lambda p: [{"class": "FEMALE_BREAST_EXPOSED", "score": 0.63}])[0])
         # Po zählt nicht (schlägt auch bei normalen Gameplay-Szenen an)
         self.assertTrue(safety.check(self.mp4, detect=lambda p: [{"class": "BUTTOCKS_EXPOSED", "score": 0.9}])[0])
+
+    def test_single_genitalia_hit_blocks(self):
+        calls = iter(range(100))
+        one = lambda p: [{"class": "FEMALE_GENITALIA_EXPOSED", "score": 0.4}] if next(calls) == 5 else []
+        self.assertFalse(safety.check(self.mp4, detect=one)[0])
 
     def test_missing_nudenet_blocks_posting(self):
         def boom(p): raise ImportError("no nudenet")

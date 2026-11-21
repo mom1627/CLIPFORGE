@@ -19,6 +19,8 @@ UNSAFE = {  # Klasse -> Mindest-Wert
 }
 FPS = float(os.getenv("NSFW_FPS", "1"))
 MIN_HITS = int(os.getenv("NSFW_MIN_HITS", "2"))
+# Intimbereich: ein einziger Treffer reicht (kam an 17 echten Clips nur in der Nacktszene vor)
+SINGLE_HIT = {"FEMALE_GENITALIA_EXPOSED", "MALE_GENITALIA_EXPOSED", "ANUS_EXPOSED"}
 
 _detector = None
 
@@ -56,7 +58,7 @@ def check(mp4: Path, detect=None) -> tuple[bool, str]:
                          if d.get("class") in UNSAFE and float(d.get("score", 0)) >= UNSAFE[d["class"]]}
                 if found:
                     hits.append(sorted(found))
-                    if len(hits) >= MIN_HITS:
+                    if len(hits) >= MIN_HITS or found & SINGLE_HIT:
                         return False, f"Nacktheit erkannt ({', '.join(hits[-1])})"
             return True, f"{len(imgs)} Standbilder geprüft, ok"
     except ImportError:
