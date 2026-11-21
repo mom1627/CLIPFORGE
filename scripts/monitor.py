@@ -164,7 +164,7 @@ def main() -> int:
     budget = time.time() + env_f("MONITOR_MINUTES", 330) * 60
     pre, post = int(env_f("PRE_SECONDS", 38)), 0
     max_clips = int(env_f("MAX_CLIPS", 12))
-    allowed = [g.strip().lower() for g in os.getenv("ALLOWED_GAMES", "Grand Theft Auto VI").split(",") if g.strip()]
+    allowed = [g.strip().lower() for g in os.getenv("ALLOWED_GAMES", "*").split(",") if g.strip()]
     channels = lc.channels()
     report = {"started": datetime.now(timezone.utc).isoformat(), "sessions": [], "clips": []}
     clips = 0
@@ -173,7 +173,7 @@ def main() -> int:
         for c in channels:
             if lc.available(c):
                 g = lc.twitch_game(c)
-                if g is not None and g.lower() not in allowed:
+                if not lc.game_allowed(g, allowed):
                     continue
                 live = c; break
         if not live:
