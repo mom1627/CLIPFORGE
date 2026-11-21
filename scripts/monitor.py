@@ -30,6 +30,7 @@ class Detector:
     def __init__(self, spike_db=7.0, floor_db=-38.0, window=8, min_gap=120, baseline_s=300, warmup=60):
         self.db, self.spike, self.floor, self.w = [], spike_db, floor_db, window
         self.gap, self.base_s, self.warm, self.last = min_gap, baseline_s, warmup, -10**9
+        self.strength = {}  # Treffer-Sekunde -> dB über dem normalen Pegel (für "beste Clips")
 
     def feed(self, values):
         """Append per-second dB values; return list of window-end seconds that are highlights."""
@@ -44,6 +45,7 @@ class Detector:
             if mean > base + self.spike and mean > self.floor and n - self.last >= self.gap:
                 # extend to the loudest point of this burst: wait until it stops rising
                 self.last = n
+                self.strength[n] = round(mean - base, 2)
                 hits.append(n)
         return hits
 
@@ -95,6 +97,14 @@ def clip_range(end_s: int, pre: int):
     return start, start + CLIP_LEN
 
 
+def clip_offset(dur: float, off: float):
+    """Start im zusammengefuegten Material, damit der Clip immer volle CLIP_LEN Sekunden hat.
+    Fehlt hinten Material (Luecke), wird der Start nach vorn verschoben; reicht es gar nicht: None."""
+    if dur < CLIP_LEN - 0.5:
+        return None
+    return float(min(off, max(0.0, dur - CLIP_LEN)))
+
+
 def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, channel: str,
                cam_box: list | None = None, fit: str | None = None):
     """Cut exactly 60 s from consecutive segments and render 9:16."""
@@ -103,6 +113,14 @@ def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, ch
     segs = [folder / f"seg_{i:05d}.ts" for i in range(first, last + 1)]
     if not all(s.exists() for s in segs):
         return None
+    # Vorheriges Material mitnehmen (falls noch im Puffer), damit bei einer Luecke hinten
+    # der Start nach vorn rutschen kann und der Clip trotzdem volle 60 s hat.
+    for _ in range(CLIP_LEN // SEG):
+        prev = folder / f"seg_{first - 1:05d}.ts"
+        if first == 0 or not prev.exists():
+            break
+        first -= 1
+        segs.insert(0, prev)
     lst = folder / "concat.txt"
     lst.write_text("".join(f"file '{s.resolve()}'\n" for s in segs))
     joined = folder / f"joined_{end_s}.ts"
@@ -112,10 +130,11 @@ def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, ch
         return None
     dur = lc.probe_duration(joined)
     off = start_abs - first * SEG
-    if dur - off < 15:  # Aufnahme zu kurz/Luecke -> kein Clip statt Absturz
+    off = clip_offset(dur, off)
+    if off is None:  # Aufnahme zu kurz/Luecke -> kein Clip statt kuerzerem Clip
         joined.unlink(missing_ok=True)
         return None
-    length = CLIP_LEN if dur - off >= CLIP_LEN - 1.5 else int(dur - off)
+    length = CLIP_LEN
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     dest = dest_dir / f"clipforge_{channel}_{stamp}.mp4"
     cams = json.loads(Path(__file__).resolve().parent.parent.joinpath('config/cams.json').read_text())
@@ -123,6 +142,10 @@ def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, ch
     lc.render_vertical(joined, dest, float(off), length, off + length + 5, cam_box=box, fit=fit)
     joined.unlink(missing_ok=True)
     return dest
+
+
+def write_report(out: Path, report: dict) -> None:
+    (out / "monitor_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))
 
 
 def publish(mp4: Path) -> bool:
@@ -184,19 +207,10 @@ def main() -> int:
                                 mp4 = captions.add_captions(mp4, live, str(end))
                             clips += 1; session["clips"] += 1
                             ok = publish(mp4)
-                            posted = ""
-                            if os.getenv("AUTO_PUBLISH") == "1" and publisher.configured() and \
-                                    sum(1 for c in report["clips"] if c.get("posted")) < int(env_f("MAX_POSTS", 3)):
-                                try:
-                                    n_done = sum(1 for c in report["clips"] if c.get("posted"))
-                                    r = publisher.publish(mp4, publisher.build_caption(live),
-                                                          delay_minutes=3 + int(env_f("POST_GAP_MINUTES", 60)) * n_done)
-                                    posted = r.get("post_id") or "ok"
-                                    print(f"Auf TikTok veröffentlicht: {mp4.name}", flush=True)
-                                except publisher.PublishError as exc:
-                                    print("TikTok-Post fehlgeschlagen:", exc, flush=True)
                             report["clips"].append({"file": mp4.name, "channel": live, "second": end,
-                                                    "bytes": mp4.stat().st_size, "published": ok, "posted": posted})
+                                                    "score": det.strength.get(end, 0.0),
+                                                    "bytes": mp4.stat().st_size, "published": ok, "posted": ""})
+                            write_report(out, report)  # laufend, damit "Beste Clips posten" auch nach Abbruch arbeitet
                             print(f"MP4 fertig: {mp4.name} (veröffentlicht={ok})", flush=True)
                 for old in segs[:max(0, done - 12)]:  # rolling buffer ~6 min
                     old.unlink(missing_ok=True)
@@ -206,7 +220,7 @@ def main() -> int:
         report["sessions"].append(session)
         time.sleep(20)
     report["finished"] = datetime.now(timezone.utc).isoformat()
-    (out / "monitor_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))
+    write_report(out, report)
     return 0
 
 
