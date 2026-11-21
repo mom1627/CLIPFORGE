@@ -52,6 +52,7 @@ jobs:
       POST_GAP_MINUTES: ${{ vars.POST_GAP_MINUTES || '60' }}
       POST_SLOTS: ${{ vars.POST_SLOTS || '10,12,16,18,20' }}
       POST_TZ: Europe/Berlin
+      POST_MODE: ${{ vars.POST_MODE || 'now' }}
       CAPTION_TAGS: ${{ vars.CAPTION_TAGS }}
       WHISPER_MODEL: ${{ vars.WHISPER_MODEL || 'small' }}
       HOOKS: ${{ vars.HOOKS }}
@@ -72,7 +73,7 @@ jobs:
         run: gh release view clips >/dev/null 2>&1 || gh release create clips --title "CLIPFORGE Clips" --notes "Automatisch erzeugte 9:16-MP4-Clips" --latest=false
       - name: Live überwachen und clippen
         run: timeout $(( ${MONITOR_MINUTES%.*} + 10 ))m python -u scripts/monitor.py
-      - name: Beste Clips posten (Top 5 am Ende des Laufs)
+      - name: Beste Clips posten (Rest am Ende des Laufs)
         if: always()
         run: python -u scripts/post_best.py
       - name: MP4-Prüfung
