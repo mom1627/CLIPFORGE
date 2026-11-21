@@ -47,7 +47,9 @@ jobs:
       CLOUDINARY_CLOUD_NAME: ${{ vars.CLOUDINARY_CLOUD_NAME }}
       CLOUDINARY_UPLOAD_PRESET: ${{ vars.CLOUDINARY_UPLOAD_PRESET }}
       AUTO_PUBLISH: ${{ vars.AUTO_PUBLISH || '0' }}
-      MAX_POSTS: ${{ vars.MAX_POSTS || '4' }}
+      MAX_POSTS: ${{ vars.MAX_POSTS || '5' }}
+      POST_BEST: ${{ vars.POST_BEST || '5' }}
+      POST_GAP_MINUTES: ${{ vars.POST_GAP_MINUTES || '60' }}
       CAPTION_TAGS: ${{ vars.CAPTION_TAGS }}
       WHISPER_MODEL: ${{ vars.WHISPER_MODEL || 'small' }}
       HOOKS: ${{ vars.HOOKS }}
@@ -68,6 +70,9 @@ jobs:
         run: gh release view clips >/dev/null 2>&1 || gh release create clips --title "CLIPFORGE Clips" --notes "Automatisch erzeugte 9:16-MP4-Clips" --latest=false
       - name: Live überwachen und clippen
         run: timeout $(( ${MONITOR_MINUTES%.*} + 10 ))m python -u scripts/monitor.py
+      - name: Beste Clips posten (Top 5 am Ende des Laufs)
+        if: always()
+        run: python -u scripts/post_best.py
       - name: MP4-Prüfung
         if: always()
         run: |

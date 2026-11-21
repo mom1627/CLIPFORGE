@@ -11,6 +11,11 @@ class DetectorTest(unittest.TestCase):
         self.assertEqual(len(hits), 1)
         self.assertTrue(200 <= hits[0] <= 215)
 
+    def test_spike_strength_recorded(self):
+        d = monitor.Detector(spike_db=7, min_gap=120)
+        hits = d.feed([-40.0] * 200 + [-18.0] * 12 + [-40.0] * 100)
+        self.assertGreater(d.strength[hits[0]], 7)
+
     def test_constant_loud_stream_no_hits(self):
         d = monitor.Detector()
         self.assertEqual(d.feed([-20.0] * 600), [])

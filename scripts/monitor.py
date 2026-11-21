@@ -30,6 +30,7 @@ class Detector:
     def __init__(self, spike_db=7.0, floor_db=-38.0, window=8, min_gap=120, baseline_s=300, warmup=60):
         self.db, self.spike, self.floor, self.w = [], spike_db, floor_db, window
         self.gap, self.base_s, self.warm, self.last = min_gap, baseline_s, warmup, -10**9
+        self.strength = {}  # Treffer-Sekunde -> dB über dem normalen Pegel (für "beste Clips")
 
     def feed(self, values):
         """Append per-second dB values; return list of window-end seconds that are highlights."""
@@ -44,6 +45,7 @@ class Detector:
             if mean > base + self.spike and mean > self.floor and n - self.last >= self.gap:
                 # extend to the loudest point of this burst: wait until it stops rising
                 self.last = n
+                self.strength[n] = round(mean - base, 2)
                 hits.append(n)
         return hits
 
@@ -142,6 +144,10 @@ def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, ch
     return dest
 
 
+def write_report(out: Path, report: dict) -> None:
+    (out / "monitor_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))
+
+
 def publish(mp4: Path) -> bool:
     repo, tag = os.getenv("GITHUB_REPOSITORY", ""), os.getenv("RELEASE_TAG", "clips")
     if not repo or not shutil.which("gh"):
@@ -201,19 +207,10 @@ def main() -> int:
                                 mp4 = captions.add_captions(mp4, live, str(end))
                             clips += 1; session["clips"] += 1
                             ok = publish(mp4)
-                            posted = ""
-                            if os.getenv("AUTO_PUBLISH") == "1" and publisher.configured() and \
-                                    sum(1 for c in report["clips"] if c.get("posted")) < int(env_f("MAX_POSTS", 3)):
-                                try:
-                                    n_done = sum(1 for c in report["clips"] if c.get("posted"))
-                                    r = publisher.publish(mp4, publisher.build_caption(live),
-                                                          delay_minutes=3 + int(env_f("POST_GAP_MINUTES", 60)) * n_done)
-                                    posted = r.get("post_id") or "ok"
-                                    print(f"Auf TikTok veröffentlicht: {mp4.name}", flush=True)
-                                except publisher.PublishError as exc:
-                                    print("TikTok-Post fehlgeschlagen:", exc, flush=True)
                             report["clips"].append({"file": mp4.name, "channel": live, "second": end,
-                                                    "bytes": mp4.stat().st_size, "published": ok, "posted": posted})
+                                                    "score": det.strength.get(end, 0.0),
+                                                    "bytes": mp4.stat().st_size, "published": ok, "posted": ""})
+                            write_report(out, report)  # laufend, damit "Beste Clips posten" auch nach Abbruch arbeitet
                             print(f"MP4 fertig: {mp4.name} (veröffentlicht={ok})", flush=True)
                 for old in segs[:max(0, done - 12)]:  # rolling buffer ~6 min
                     old.unlink(missing_ok=True)
@@ -223,7 +220,7 @@ def main() -> int:
         report["sessions"].append(session)
         time.sleep(20)
     report["finished"] = datetime.now(timezone.utc).isoformat()
-    (out / "monitor_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))
+    write_report(out, report)
     return 0
 
 
