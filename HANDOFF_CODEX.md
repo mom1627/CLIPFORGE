@@ -79,3 +79,10 @@ Laufzeitdaten: `~/CLIPFORGE/clips/` (MP4 + JSON je Clip), `~/CLIPFORGE/config.js
 - GitHub `monitor.yml`: Secret `BUFFER_API_KEY`, Variablen `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_UPLOAD_PRESET`, `MAX_POSTS` (pro Lauf, Standard 4; Läufe alle 6 h ≈ 16/Tag), `POST_GAP_MINUTES`.
 - **Noch nicht gegen echtes Buffer/Cloudinary getestet** (nur Fake-Server, `tests/test_publisher.py`, `tests/test_autopost.py`). Offen: prüfen, ob Buffer Free TikTok-Videoposts per API annimmt und wie viele geplante Posts der Free-Tarif gleichzeitig erlaubt; Cloudinary-Free-Kontingent (Speicher) im Blick behalten, alte Videos dort löschen.
 - OmniSocials ist entfernt (kostenpflichtig).
+
+## Update 21.11. (abends) – Cloud postet am Ende die besten 5
+- `monitor.py` postet nicht mehr sofort. Jeder Clip bekommt `score` (dB über normalem Pegel, `Detector.strength`), Bericht `output/monitor_report.json` wird laufend geschrieben.
+- Neuer Schritt in `monitor.yml` „Beste Clips posten“ (`scripts/post_best.py`, `if: always()`): nur Clips mit genau 60 s, Nacktheits-Filter (`scripts/safety.py`, NudeNet, Standbild alle 2 s, unsicher ab 2 Treffern; fehlt NudeNet → nichts posten), Top `POST_BEST` (5) nach Score, Abstand `POST_GAP_MINUTES` (60). Ohne `AUTO_PUBLISH=1` nur Vorschau im Log.
+- Bugfix: `monitor.py` benutzte `publisher` ohne Import (Absturz bei AUTO_PUBLISH=1).
+- 60-s-Fix: Bei Lücke in der Aufnahme rutscht der Start nach vorn (`clip_offset`), sonst kein Clip. Die alten 50-s-Clips stammen aus Läufen vor Commit 0b38936.
+- `nsfw-check.yml`: prüft alle Release-Clips mit dem Filter (manuell startbar).
