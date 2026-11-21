@@ -20,12 +20,24 @@ jobs:
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg && python -m pip install --quiet "nudenet>=3.4,<4"
       - name: Clips laden
         run: mkdir -p clips && gh release download clips -R "$GITHUB_REPOSITORY" -p "*.mp4" -D clips
-      - name: Jeden Clip prüfen
+      - name: Diagnose – höchste Werte je Klasse (ganzes Bild und nur Gameplay-Teil)
         run: |
           python - <<'PY'
-          import sys; from pathlib import Path
-          sys.path.insert(0, "scripts"); import safety
+          import subprocess, tempfile; from pathlib import Path
+          from nudenet import NudeDetector
+          det = NudeDetector()
+          KEEP = ("EXPOSED", "COVERED")
           for f in sorted(Path("clips").glob("*.mp4")):
-              ok, why = safety.check(f)
-              print(("OK      " if ok else "BLOCKIERT"), f.name, "-", why, flush=True)
+              with tempfile.TemporaryDirectory() as t:
+                  subprocess.run(["ffmpeg","-loglevel","error","-i",str(f),"-vf","fps=1,scale=720:-2",f"{t}/a_%03d.jpg"])
+                  subprocess.run(["ffmpeg","-loglevel","error","-i",str(f),"-vf","fps=1,crop=iw:ih*0.6:0:ih*0.4,scale=-2:1080",f"{t}/g_%03d.jpg"])
+                  for tag in ("a", "g"):
+                      best = {}
+                      for img in sorted(Path(t).glob(f"{tag}_*.jpg")):
+                          for d in det.detect(str(img)):
+                              c = d["class"]
+                              if any(k in c for k in KEEP) and "FACE" not in c:
+                                  best.setdefault(c, []).append(round(d["score"], 2))
+                      summary = ", ".join(f"{c}:max{max(v)}/n{len(v)}" for c, v in sorted(best.items()) if max(v) >= 0.2)
+                      print(f"{f.name:45s} {'ganz' if tag=='a' else 'game'}  {summary}", flush=True)
           PY
