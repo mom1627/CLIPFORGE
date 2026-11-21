@@ -172,7 +172,7 @@ def vod_section(vod: dict, begin: int, end: int, folder: Path,
                 label: str, high_quality: bool = False) -> Path:
     if begin < 0 or end <= begin:
         raise ValueError("Ungueltiger VOD-Zeitbereich")
-    fmt = "best[height<=720]/best" if high_quality else "worst[height<=480]/worst"
+    fmt = "best[height<=1080]/best" if high_quality else "worst[height<=480]/worst"
     prefix = folder / label
     args = ["yt-dlp", "--no-playlist", "--ignore-config", "--no-progress",
             "--no-warnings", "--retries", "1", "--fragment-retries", "1",
@@ -365,8 +365,8 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
         subtitle_y = min(height - 220, seam + max(100, int(height * 0.16)))
         master = ["-af", "apad,atrim=duration=60,asetpts=N/SR/TB",
                   "-frames:v", "1800", "-t", "60",
-                  "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
-                  "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
+                  "-c:v", "libx264", "-preset", "fast", "-crf", os.getenv("CRF", "19"),
+                  "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
                   "-movflags", "+faststart", str(Path(output).resolve())]
         if os.getenv("CAPTION_STYLE", "box") == "box":
             # Weißer Titel-Kasten + roter Zitat-Kasten (echtes Zitat) an der Naht, wie Live-Clips

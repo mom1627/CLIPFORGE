@@ -57,7 +57,7 @@ jobs:
       VOD_SKIP_START: "900"
       DEBUG_FRAMES: "1"
       SPIKE_DB: "6"
-      VIDEO_WIDTH: "720"
+      VIDEO_WIDTH: "1080"
       VIDEO_FIT: split
       WHISPER_MODEL: small
       TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
