@@ -4,17 +4,37 @@ import os, subprocess, zlib
 from pathlib import Path
 
 HOOKS = {
-    "de": ["Das hat niemand kommen sehen", "Warte bis zum Ende", "{s} dreht komplett durch",
-           "Diese Reaktion ist Gold", "Das ist doch nicht sein Ernst", "Schau genau hin", "Der Chat explodiert"],
-    "en": ["Nobody saw this coming", "Wait for the end", "{s} completely loses it",
-           "This reaction is gold", "This can't be real", "Watch closely", "Chat is going crazy"],
+    "de": ["{s} rastet komplett aus ?!", "Damit hat {s} nicht gerechnet ?!", "{s} kann es nicht fassen ?!",
+           "{s} verliert die Nerven ?!", "{s} ist sprachlos ?!", "Was macht {s} da ?!", "Der Chat eskaliert bei {s} ?!"],
+    "en": ["{s} completely loses it ?!", "{s} did NOT expect this ?!", "{s} can't believe it ?!",
+           "{s} loses his mind ?!", "{s} is speechless ?!", "What is {s} doing ?!", "Chat goes crazy on {s} ?!"],
 }
+DISPLAY = {  # Twitch-Login -> Name, den Zuschauer kennen
+    "montanablack88": "Monte", "kaicenat": "Kai Cenat", "xqc": "xQc", "trymacs": "Trymacs",
+    "papaplatte": "Papaplatte", "eliasn97": "Eli", "knossi": "Knossi", "revedtv": "Reved",
+    "jynxzi": "Jynxzi", "caseoh_": "CaseOh", "ohnepixel": "ohnePixel", "hasanabi": "Hasan",
+}
+
+
+def display_name(channel: str) -> str:
+    return DISPLAY.get(channel.lower(), channel)
 
 
 def pick_hook(channel: str, seed: str, lang: str) -> str:
     custom = [h.strip() for h in os.getenv("HOOKS", "").split("|") if h.strip()]
     pool = custom or HOOKS.get(lang[:2], HOOKS["en"])
-    return pool[zlib.crc32(seed.encode()) % len(pool)].format(s=channel)
+    return pool[zlib.crc32(seed.encode()) % len(pool)].format(s=display_name(channel))
+
+
+def pick_quote(words, around: float | None = None, max_words: int = 5) -> str:
+    """Echtes Zitat aus dem Clip (2-5 Wörter) für den roten Kasten, möglichst nahe am Highlight."""
+    lines = [(a, b, t) for a, b, t in group_words(words, max_words=max_words, max_len=3.0) if len(t.split()) >= 2]
+    if not lines:
+        return ""
+    if around is None:
+        around = max(b for _, b, _ in lines) * 0.7
+    a, b, t = min(lines, key=lambda x: abs((x[0] + x[1]) / 2 - around))
+    return t.lower().strip(" .,!?")
 
 
 def _t(sec: float) -> str:
@@ -158,16 +178,45 @@ def _draw_block(draw, text: str, font, cx: int, top: int, fill, stroke: int, sha
         y += int(h * 1.18)
 
 
+def _draw_box(draw, text: str, font, cx: int, top: int, bg, fg, pad: int, max_w: int) -> int:
+    """Abgerundeter Kasten mit zentriertem Text (mehrzeilig umbrochen). Gibt die Unterkante zurück."""
+    words, rows, cur = text.split(), [], ""
+    for w in words:
+        test = (cur + " " + w).strip()
+        if cur and draw.textlength(test, font=font) > max_w - 2 * pad:
+            rows.append(cur); cur = w
+        else:
+            cur = test
+    rows.append(cur)
+    rows = rows[:3]
+    asc, desc = font.getmetrics()
+    lh = int((asc + desc) * 1.08)
+    tw = max(int(draw.textlength(r, font=font)) for r in rows)
+    w, h = tw + 2 * pad, lh * len(rows) + int(pad * 1.2)
+    x0 = cx - w // 2
+    draw.rounded_rectangle([x0, top, x0 + w, top + h], radius=max(8, pad // 2), fill=bg)
+    y = top + int(pad * 0.6)
+    for r in rows:
+        draw.text((cx - int(draw.textlength(r, font=font)) // 2, y), r, font=font, fill=fg)
+        y += lh
+    return top + h
+
+
 def build_overlay_frames(words, hook: str, width: int, height: int, duration: float, outdir: Path,
-                         hook_seconds: float = 2.8, split: bool = False) -> Path:
-    """Zeichnet Hook + Untertitel als transparente PNGs und schreibt eine concat-Liste (Bild + Dauer)."""
+                         hook_seconds: float = 2.8, split: bool = False, quote: str = "",
+                         style: str | None = None) -> Path:
+    """Zeichnet Hook + Untertitel als transparente PNGs und schreibt eine concat-Liste (Bild + Dauer).
+    style 'box' (Standard): weißer Kasten mit schwarzem Titel + roter Kasten mit Zitat an der Naht,
+    den ganzen Clip lang sichtbar. style 'classic': weiße Schrift mit Rand, nur die ersten Sekunden."""
     from PIL import Image, ImageDraw
+    style = style or os.getenv("CAPTION_STYLE", "box")
     fs, hs = round(width * 0.078), round(width * 0.092)
     sub_y = round(height * (0.80 if split else 0.735))
     hook_y = round(height * (0.40 - 0.07) if split else height * 0.22)
     f_sub, f_hook = _font(fs), _font(hs)
+    f_box, f_quote = _font(round(width * 0.074)), _font(round(width * 0.066))
     hook_fill = (255, 255, 255, 255) if split else (255, 210, 0, 255)
-    hook_end = min(hook_seconds, duration)
+    hook_end = duration if style == "box" else min(hook_seconds, duration)
     subs = [(a, min(b, duration), wrap(_esc(t), 14)) for a, b, t in group_words(words) if a < duration]
     cuts = sorted({0.0, hook_end, duration, *[x for a, b, _ in subs for x in (a, b)]})
     cuts = [c for c in cuts if 0 <= c <= duration]
@@ -183,7 +232,14 @@ def build_overlay_frames(words, hook: str, width: int, height: int, duration: fl
         if key not in cache:
             img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
             d = ImageDraw.Draw(img)
-            if hook_on:
+            if hook_on and style == "box":
+                top = round(height * (0.31 if split else 0.18))
+                bottom = _draw_box(d, _esc(hook), f_box, width // 2, top, (255, 255, 255, 255), (0, 0, 0, 255),
+                                   pad=round(width * 0.035), max_w=round(width * 0.88))
+                if quote:
+                    _draw_box(d, _esc(quote), f_quote, width // 2, bottom - round(width * 0.012),
+                              (232, 59, 59, 255), (255, 255, 255, 255), pad=round(width * 0.03), max_w=round(width * 0.78))
+            elif hook_on:
                 _draw_block(d, wrap(_esc(hook.upper()), 16), f_hook, width // 2, hook_y, hook_fill, max(4, hs // 10), 4)
             if sub:
                 _draw_block(d, sub, f_sub, width // 2, sub_y, (255, 255, 255, 255), max(3, fs // 12), 2)
@@ -209,17 +265,19 @@ def add_captions(mp4: Path, channel: str, seed: str = "", split: bool | None = N
         words, lang = transcribe(mp4)
         split = (os.getenv("VIDEO_FIT", "split") == "split") if split is None else split
         hook = pick_hook(channel, seed or mp4.name, lang)
+        style = os.getenv("CAPTION_STYLE", "box")
+        quote = pick_quote(words, around=float(os.getenv("HIGHLIGHT_AT", "42"))) if style == "box" else ""
         out = mp4.with_name(mp4.stem + "_cap.mp4")
         enc = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
                "-c:a", "copy", "-movflags", "+faststart", out.name]
-        if has_ass_filter():
+        if style != "box" and has_ass_filter():
             ass = mp4.with_suffix(".ass")
             ass.write_text(build_ass(words, hook, w, h, d, split=split), encoding="utf-8")
             cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", mp4.name, "-vf", f"ass={ass.name}"] + enc
             how = "ass"
         else:
             tmp = mp4.with_name(mp4.stem + "_ov")
-            lst = build_overlay_frames(words, hook, w, h, d, tmp, split=split)
+            lst = build_overlay_frames(words, hook, w, h, d, tmp, split=split, quote=quote, style=style)
             cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", mp4.name,
                    "-f", "concat", "-safe", "0", "-i", str(lst.relative_to(mp4.parent)),
                    "-filter_complex", "[0:v][1:v]overlay=0:0:eof_action=repeat:format=auto[v]",

@@ -63,7 +63,7 @@ jobs:
       - name: FFmpeg und Streamlink installieren
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
-          python -m pip install --disable-pip-version-check --quiet "streamlink>=8,<9" faster-whisper "nudenet>=3.4,<4"
+          python -m pip install --disable-pip-version-check --quiet "streamlink>=8,<9" faster-whisper "nudenet>=3.4,<4" Pillow
       - name: Whisper-Modell vorab laden
         run: python -c "from faster_whisper import WhisperModel; WhisperModel('${{ vars.WHISPER_MODEL || 'small' }}', device='cpu', compute_type='int8')"
       - name: Tests

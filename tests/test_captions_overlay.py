@@ -36,5 +36,25 @@ class OverlayTest(unittest.TestCase):
             self.assertFalse((Path(t) / "c_ov").exists())
 
 
+class BoxStyleTest(unittest.TestCase):
+    def test_white_and_red_box_at_seam(self):
+        from PIL import Image
+        words = [(1.0, 1.4, "das"), (1.4, 1.9, "ist"), (12.0, 12.4, "sie"), (12.4, 12.8, "widern"), (12.8, 13.2, "ihn"), (13.2, 13.5, "an")]
+        quote = captions.pick_quote(words, around=12.5)
+        self.assertEqual(quote, "sie widern ihn an")
+        with tempfile.TemporaryDirectory() as t:
+            lst = captions.build_overlay_frames(words, captions.pick_hook("montanablack88", "1", "de"), 720, 1280, 20.0,
+                                                Path(t) / "ov", split=True, quote=quote, style="box")
+            first = (Path(t) / "ov" / lst.read_text().split("'")[1])
+            img = Image.open(first).convert("RGBA")
+            col = [img.getpixel((360, y)) for y in range(380, 700)]
+            self.assertTrue(any(p[:3] == (255, 255, 255) and p[3] == 255 for p in col))   # weißer Kasten
+            self.assertTrue(any(p[:3] == (232, 59, 59) and p[3] == 255 for p in col))     # roter Kasten
+            self.assertIn("ffconcat", lst.read_text())
+
+    def test_display_name_in_hook(self):
+        self.assertIn("Monte", captions.pick_hook("montanablack88", "seed", "de"))
+
+
 if __name__ == "__main__":
     unittest.main()
