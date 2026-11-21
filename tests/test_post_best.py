@@ -3,7 +3,7 @@ import json, os, subprocess, sys, tempfile, unittest
 from pathlib import Path
 from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-import post_best, publisher
+import post_best, publisher, safety
 
 
 def make_mp4(path: Path, seconds: int):
@@ -24,9 +24,10 @@ class PostBestTest(unittest.TestCase):
                                                 "POST_GAP_MINUTES": "60", "AUTO_PUBLISH": "1", "BUFFER_API_KEY": "x",
                                                 "CLOUDINARY_CLOUD_NAME": "x", "CLOUDINARY_UPLOAD_PRESET": "x"})
         self.env.start()
+        self.safe = mock.patch.object(safety, "check", return_value=(True, "ok")); self.safe.start()
 
     def tearDown(self):
-        self.env.stop(); self.t.cleanup()
+        self.safe.stop(); self.env.stop(); self.t.cleanup()
 
     def test_posts_top5_by_score_skips_50s_clip_with_gap(self):
         calls = []
@@ -43,6 +44,15 @@ class PostBestTest(unittest.TestCase):
         with mock.patch.object(publisher, "publish", side_effect=fake):
             post_best.main()
         self.assertEqual([c[0] for c in calls], ["c3.mp4"])
+
+    def test_unsafe_clip_skipped_next_one_moves_up(self):
+        self.safe.stop()
+        bad = lambda p: (p.name != "c1.mp4", "Nacktheit erkannt")
+        clips = json.loads((self.out / "monitor_report.json").read_text())["clips"]
+        best = post_best.pick_best(clips, self.out, 5, check=bad)
+        self.assertEqual([c["file"] for c in best], ["c6.mp4", "c4.mp4", "c0.mp4", "c5.mp4", "c3.mp4"])
+        self.assertEqual(clips[1]["unsafe"], "Nacktheit erkannt")
+        self.safe.start()
 
     def test_preview_only_without_auto_publish(self):
         os.environ["AUTO_PUBLISH"] = "0"
