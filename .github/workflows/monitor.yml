@@ -50,6 +50,8 @@ jobs:
       MAX_POSTS: ${{ vars.MAX_POSTS || '5' }}
       POST_BEST: ${{ vars.POST_BEST || '5' }}
       POST_GAP_MINUTES: ${{ vars.POST_GAP_MINUTES || '60' }}
+      POST_SLOTS: ${{ vars.POST_SLOTS || '10,12,16,18,20' }}
+      POST_TZ: Europe/Berlin
       CAPTION_TAGS: ${{ vars.CAPTION_TAGS }}
       WHISPER_MODEL: ${{ vars.WHISPER_MODEL || 'small' }}
       HOOKS: ${{ vars.HOOKS }}
