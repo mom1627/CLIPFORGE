@@ -53,6 +53,9 @@ jobs:
       SCAN_SECONDS: "240"
       MIN_GAP: "120"
       CAPTION_STYLE: box
+      PER_VOD: ${{ inputs.max_clips || '7' }}
+      VOD_SKIP_START: "900"
+      DEBUG_FRAMES: "1"
       SPIKE_DB: "6"
       VIDEO_WIDTH: "720"
       VIDEO_FIT: split
@@ -86,6 +89,12 @@ jobs:
           gh release view clips >/dev/null 2>&1 || gh release create clips --title "CLIPFORGE Clips" --notes "Verifizierte Clip-Exporte" --latest=false
       - name: VODs pruefen, Highlights finden und MP4s verifizieren
         run: python -u scripts/vod_clips.py
+      - name: Vollbilder (Facecam-Position) hochladen
+        if: always()
+        run: |
+          ls output/frames/*.jpg >/dev/null 2>&1 || exit 0
+          gh release view debug >/dev/null 2>&1 || gh release create debug --title debug --notes "Standbilder" --latest=false
+          gh release upload debug output/frames/*.jpg --clobber
       - name: ffprobe-Nachweis und Bericht
         if: always()
         run: |

@@ -348,6 +348,11 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
         os.environ["CAM_BOX"] = ",".join(str(x) for x in cams.get(
             candidate.channel, cams["default"]))
         os.environ["VIDEO_WIDTH"] = str(bounded_int("VIDEO_WIDTH", 720, 720, 1080))
+        if os.getenv("DEBUG_FRAMES") == "1":  # Vollbild (16:9) für die Facecam-Position
+            frames = OUT / "frames"
+            frames.mkdir(parents=True, exist_ok=True)
+            subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-ss", str(offset + 5), "-i", str(source),
+                            "-frames:v", "1", str(frames / (filename[:-4] + "_full.jpg"))], timeout=60)
         prelim = tmp / "layout.mp4"
         lc.render_vertical(source, prelim, offset, 60, duration)
         words, language = captions.transcribe(prelim)
@@ -484,7 +489,7 @@ def main() -> int:
                 chat = chat_offsets(chat_path)
                 if not chat:
                     report["warnings"].append("Chat-Replay nicht verfuegbar fuer VOD " + vod["id"])
-                peaks = [] if chat else chat_probe.chat_peaks(vod["id"], vod["duration"], count=max(4, max_clips))
+                peaks = [] if chat else chat_probe.chat_peaks(vod["id"], vod["duration"], count=max(4, max_clips * 2))
                 if peaks:  # schnell: Chat-Spitzen, nur kurze Ausschnitte laden
                     report["warnings"].append(f"Chat-Spitzen fuer VOD {vod['id']}: {len(peaks)}")
                     for off, ratio in peaks:
@@ -496,7 +501,10 @@ def main() -> int:
                 candidates.extend(candidates_for_vod(vod, tmp, scan_count,
                             scan_seconds, float(os.getenv("SPIKE_DB", "6")),
                             chat, report["windows"]))
-            selected = top_candidates(candidates, max_clips, min_gap=gap)
+            skip_start = bounded_int("VOD_SKIP_START", 900, 0, 7200)  # Stream-Anfang (Einrichtung, Dashboard) auslassen
+            candidates = [c for c in candidates if c.start_s >= skip_start]
+            selected = top_candidates(candidates, max_clips, min_gap=gap,
+                                      per_vod=bounded_int("PER_VOD", 2, 1, 12))
             report["candidate_count"] = len(candidates)
             report["selected_count"] = len(selected)
             for chosen in selected:
