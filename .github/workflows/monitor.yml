@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 350
     env:
-      APPROVED_CHANNELS: ${{ inputs.channels || vars.APPROVED_CHANNELS || 'kaicenat,xqc,montanablack88,trymacs,papaplatte,caseoh_' }}
+      APPROVED_CHANNELS: ${{ inputs.channels || vars.APPROVED_CHANNELS || 'kaicenat,xqc,jynxzi,caseoh_,ohnepixel,hasanabi,montanablack88,trymacs,papaplatte,eliasn97,knossi,revedtv' }}
       ALLOWED_GAMES: ${{ vars.ALLOWED_GAMES || '*' }}
       TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
       TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}

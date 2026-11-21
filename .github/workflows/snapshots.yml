@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      APPROVED_CHANNELS: ${{ vars.APPROVED_CHANNELS || 'kaicenat,xqc,montanablack88,trymacs,papaplatte,caseoh_' }}
+      APPROVED_CHANNELS: ${{ vars.APPROVED_CHANNELS || 'kaicenat,xqc,jynxzi,caseoh_,ohnepixel,hasanabi,montanablack88,trymacs,papaplatte,eliasn97,knossi,revedtv' }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
