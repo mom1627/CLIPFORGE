@@ -394,6 +394,12 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
         if run.returncode:
             raise RuntimeError("FFmpeg Untertitel/Hook-Render: " + clean_error(run.stderr))
         verified = verify_mp4(output, width, height)
+        if os.getenv("NSFW_CHECK", "1") == "1":
+            import safety
+            safe, why = safety.check(output)
+            if not safe:
+                output.unlink(missing_ok=True)
+                raise RuntimeError("Nacktheits-Filter: " + why)
         print("FFPROBE_OK", filename, json.dumps(verified), flush=True)
         return {"file": filename, "streamer": candidate.channel,
                 "vod_link": vod["url"], "vod_id": candidate.vod_id,

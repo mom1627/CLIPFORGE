@@ -83,7 +83,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
-          python -m pip install --disable-pip-version-check --quiet "yt-dlp>=2026.10.0" "streamlink>=8,<9" "faster-whisper>=1.1,<2" Pillow
+          python -m pip install --disable-pip-version-check --quiet "yt-dlp>=2026.10.0" "streamlink>=8,<9" "faster-whisper>=1.1,<2" Pillow "nudenet>=3.4,<4"
       - name: Release clips pruefen oder erstellen
         run: |
           gh release view clips >/dev/null 2>&1 || gh release create clips --title "CLIPFORGE Clips" --notes "Verifizierte Clip-Exporte" --latest=false
