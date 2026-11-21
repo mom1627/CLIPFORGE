@@ -59,11 +59,11 @@ class PostBestTest(unittest.TestCase):
         self.assertEqual([c[1] for c in calls], [3, 63, 123, 183, 243])
         rep = json.loads((self.out / "monitor_report.json").read_text())
         self.assertEqual(sum(1 for c in rep["clips"] if c["posted"]), 5)
-        # zweiter Aufruf postet nichts doppelt, nur den letzten übrigen 60-s-Clip
+        # zweiter Aufruf: MAX_POSTS (5) pro Lauf schon erreicht -> nichts mehr, nichts doppelt
         calls.clear()
         with mock.patch.object(publisher, "publish", side_effect=fake):
             post_best.main()
-        self.assertEqual([c[0] for c in calls], ["c3.mp4"])
+        self.assertEqual(calls, [])
 
     def test_unsafe_clip_skipped_next_one_moves_up(self):
         self.safe.stop()
@@ -73,6 +73,25 @@ class PostBestTest(unittest.TestCase):
         self.assertEqual([c["file"] for c in best], ["c6.mp4", "c4.mp4", "c0.mp4", "c5.mp4", "c3.mp4"])
         self.assertEqual(clips[1]["unsafe"], "Nacktheit erkannt")
         self.safe.start()
+
+    def test_post_now_respects_gap_and_max(self):
+        calls = []
+        def fake(video, caption, dry_run=False, delay_minutes=3):
+            calls.append(delay_minutes); return {"post_id": f"p{len(calls)}", "due": "x"}
+        os.environ["MAX_POSTS"] = "2"
+        rep = json.loads((self.out / "monitor_report.json").read_text())
+        with mock.patch.object(publisher, "publish", side_effect=fake):
+            self.assertIn("geplant in 3 min", post_best.post_now(rep["clips"][0], self.out, rep, now=1000.0))
+            # 10 min später: nächster Post erst 60 min nach dem ersten
+            self.assertIn("geplant in 53 min", post_best.post_now(rep["clips"][1], self.out, rep, now=1600.0))
+            self.assertIn("MAX_POSTS", post_best.post_now(rep["clips"][3], self.out, rep, now=1700.0))
+        self.assertEqual(calls, [3, 53])
+
+    def test_post_now_skips_50s_clip(self):
+        rep = json.loads((self.out / "monitor_report.json").read_text())
+        with mock.patch.object(publisher, "publish") as pub:
+            self.assertIn("nicht 60 s", post_best.post_now(rep["clips"][2], self.out, rep, now=1000.0))
+            pub.assert_not_called()
 
     def test_preview_only_without_auto_publish(self):
         os.environ["AUTO_PUBLISH"] = "0"

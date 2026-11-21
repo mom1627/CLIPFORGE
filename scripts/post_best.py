@@ -64,6 +64,36 @@ def pick_best(clips: list[dict], out: Path, n: int, check=None) -> list[dict]:
     return best
 
 
+def post_now(clip: dict, out: Path, report: dict, check=None, now: float | None = None) -> str:
+    """POST_MODE=now: einen frischen Clip sofort einplanen (Abstand POST_GAP_MINUTES zum letzten Post,
+    höchstens MAX_POSTS pro Lauf, nur 60 s, ohne Nacktheit). Gibt den Status als Text zurück."""
+    import time
+    if os.getenv("AUTO_PUBLISH") != "1" or not publisher.configured():
+        return "nicht gepostet (AUTO_PUBLISH/Zugangsdaten)"
+    posted = [c for c in report.get("clips", []) if c.get("posted")]
+    if len(posted) >= int(os.getenv("MAX_POSTS", "5")):
+        return "nicht gepostet (MAX_POSTS erreicht)"
+    mp4 = out / clip["file"]
+    if abs(duration(mp4) - CLIP_LEN) > 0.5:
+        return "nicht gepostet (nicht 60 s)"
+    safe, why = (check or safety.check)(mp4)
+    if not safe:
+        clip["unsafe"] = why
+        return "nicht gepostet – " + why
+    now = time.time() if now is None else now
+    gap = int(os.getenv("POST_GAP_MINUTES", "60")) * 60
+    dues = [float(c["due_ts"]) for c in posted if c.get("due_ts")]
+    earliest = max(now + 180, max(dues) + gap) if dues else now + 180
+    delay = max(3, int((earliest - now) // 60))
+    try:
+        r = publisher.publish(mp4, publisher.build_caption(clip.get("channel", "")), delay_minutes=delay)
+    except publisher.PublishError as exc:
+        return f"Posten fehlgeschlagen: {exc}"
+    clip["posted"] = r.get("post_id") or "ok"
+    clip["due_ts"] = now + delay * 60
+    return f"geplant in {delay} min ({r.get('due')})"
+
+
 def main() -> int:
     out = Path(os.getenv("CLIPFORGE_OUTPUT", "output"))
     rep_path = out / "monitor_report.json"
@@ -71,7 +101,10 @@ def main() -> int:
         print("Kein Bericht – in diesem Lauf entstanden keine Clips.")
         return 0
     report = json.loads(rep_path.read_text())
-    n = min(int(os.getenv("POST_BEST", "5")), int(os.getenv("MAX_POSTS", "5")))
+    already = sum(1 for c in report.get("clips", []) if c.get("posted"))
+    n = max(0, min(int(os.getenv("POST_BEST", "5")), int(os.getenv("MAX_POSTS", "5")) - already))
+    if os.getenv("POST_MODE", "end") == "now":
+        print(f"POST_MODE=now: {already} Clips wurden schon während des Laufs eingeplant.")
     gap = int(os.getenv("POST_GAP_MINUTES", "60"))
     best = pick_best(report.get("clips", []), out, n)
     print(f"{len(report.get('clips', []))} Clips im Lauf, {len(best)} ausgewählt:")
@@ -84,7 +117,7 @@ def main() -> int:
         rep_path.write_text(json.dumps(report, ensure_ascii=False, indent=2))
         return 0
     failed = 0
-    delays = slot_delays(len(best), gap=gap)
+    delays = slot_delays(len(best), gap=gap, slots="" if os.getenv("POST_MODE", "end") == "now" else None)
     for i, c in enumerate(best):
         try:
             r = publisher.publish(out / c["file"], publisher.build_caption(c.get("channel", "")),
