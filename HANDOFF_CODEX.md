@@ -82,7 +82,7 @@ Laufzeitdaten: `~/CLIPFORGE/clips/` (MP4 + JSON je Clip), `~/CLIPFORGE/config.js
 
 ## Update 21.11. (abends) – Cloud postet am Ende die besten 5
 - `monitor.py` postet nicht mehr sofort. Jeder Clip bekommt `score` (dB über normalem Pegel, `Detector.strength`), Bericht `output/monitor_report.json` wird laufend geschrieben.
-- Neuer Schritt in `monitor.yml` „Beste Clips posten“ (`scripts/post_best.py`, `if: always()`): nur Clips mit genau 60 s, Nacktheits-Filter (`scripts/safety.py`, NudeNet, Standbild alle 2 s, unsicher ab 2 Treffern; fehlt NudeNet → nichts posten), Top `POST_BEST` (5) nach Score, Abstand `POST_GAP_MINUTES` (60). Ohne `AUTO_PUBLISH=1` nur Vorschau im Log.
+- Neuer Schritt in `monitor.yml` „Beste Clips posten“ (`scripts/post_best.py`, `if: always()`): nur Clips mit genau 60 s, Nacktheits-Filter (`scripts/safety.py`, NudeNet, 1 Standbild/s ganz + Gameplay-Ausschnitt; Brust ab 0,7 in 2 Bildern, Intimbereich 1 Treffer; Po zählt nicht; fehlt NudeNet → nichts posten. Geprüft an 17 echten Clips: 17/17 richtig, Lauf 44929781759), Top `POST_BEST` (5) nach Score, Abstand `POST_GAP_MINUTES` (60). Ohne `AUTO_PUBLISH=1` nur Vorschau im Log.
 - Bugfix: `monitor.py` benutzte `publisher` ohne Import (Absturz bei AUTO_PUBLISH=1).
 - 60-s-Fix: Bei Lücke in der Aufnahme rutscht der Start nach vorn (`clip_offset`), sonst kein Clip. Die alten 50-s-Clips stammen aus Läufen vor Commit 0b38936.
 - `nsfw-check.yml`: prüft alle Release-Clips mit dem Filter (manuell startbar).
