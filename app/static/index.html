@@ -15,7 +15,7 @@ section{background:var(--panel);border:1px solid var(--line);border-radius:14px;
 h2{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--mut);margin:0 0 12px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 input,select{background:#0f1116;border:1px solid var(--line);color:var(--txt);border-radius:9px;padding:9px 11px;font:inherit}
-input[type=text]{flex:1;min-width:200px}
+input[type=text],input[type=password]{flex:1;min-width:200px}
 button{background:#232734;color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer}
 button.p{background:var(--acc);border-color:var(--acc)}button:disabled{opacity:.5;cursor:default}
 .chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-top:12px}
@@ -68,6 +68,21 @@ details summary{cursor:pointer;color:var(--mut)}
   </section>
 
   <section>
+    <h2>Automatisch auf TikTok posten (kostenlos über Buffer)</h2>
+    <p class="mut" id="pubstate"></p>
+    <details id="pubbox"><summary>Buffer verbinden</summary>
+      <p class="mut">1. Kostenloses Konto auf buffer.com, TikTok dort verbinden. 2. Schlüssel unter publish.buffer.com/settings/api erzeugen.
+      3. Kostenloses Konto auf cloudinary.com, unter Settings → Upload ein Upload-Preset mit „Unsigned“ anlegen. Werte hier eintragen (nur am Mac).</p>
+      <div class="set">
+        <label>Buffer-API-Schlüssel<input type="password" id="pb_key" autocomplete="off" placeholder="wird nicht angezeigt"></label>
+        <label>Cloudinary Cloud-Name<input type="text" id="pb_cloud" autocomplete="off"></label>
+        <label>Cloudinary Upload-Preset (unsigned)<input type="text" id="pb_preset" autocomplete="off"></label>
+      </div>
+      <div class="row" style="margin-top:10px"><button class="p" onclick="savePub()">Speichern und prüfen</button><span class="mut" id="pbmsg"></span></div>
+    </details>
+  </section>
+
+  <section>
     <details><summary>Einstellungen</summary>
       <div class="set" id="set"></div>
       <div class="row" style="margin-top:10px"><button onclick="saveSettings()">Einstellungen speichern</button></div>
@@ -77,7 +92,7 @@ details summary{cursor:pointer;color:var(--mut)}
 <script>
 const SET=[["auto_watch","Live automatisch überwachen","bool"],["max_parallel","Streams gleichzeitig","num"],
 ["chat_ratio","Chat-Spitze ab (x normal)","num"],["spike_db","Ton-Spitze ab (dB)","num"],["min_gap","Mindestabstand Clips (s)","num"],
-["captions","Hook + Untertitel","bool"],["auto_publish","Neue Clips automatisch öffentlich posten","bool"],["max_posts_per_day","Max. Posts pro Tag","num"],["caption_tags","Hashtags","text"],["tiktok_auto","Neue Clips als TikTok-Entwurf","bool"],["vod_hours","VODs der letzten Stunden","num"],["vod_max_clips","Max. Clips pro VOD-Auftrag","num"],
+["captions","Hook + Untertitel","bool"],["auto_publish","Neue Clips automatisch öffentlich posten","bool"],["max_posts_per_day","Max. Posts pro 24 h (TikTok-Grenze ca. 15)","num"],["post_gap_minutes","Mindestabstand zwischen Posts (Min.)","num"],["caption_tags","Hashtags","text"],["tiktok_auto","Neue Clips als TikTok-Entwurf","bool"],["vod_hours","VODs der letzten Stunden","num"],["vod_max_clips","Max. Clips pro VOD-Auftrag","num"],
 ["vod_title_filter","VOD-Titel enthält (leer = alle)","text"]];
 let S=null, shown="";
 const $=id=>document.getElementById(id);
@@ -87,6 +102,7 @@ async function load(){
   try{S=await api("/api/state")}catch(e){return}
   $("keys").textContent=S.twitch_keys?"Twitch-Schlüssel ✓":"Twitch-Schlüssel fehlen (.env)";
   $("count").textContent=S.clips.length+" Clips";
+  {const P=S.publisher||{};$("pubstate").textContent=P.configured?`Verbunden ✓ · ${P.posts_today} Posts in den letzten 24 h · Automatik: ${S.settings&&S.settings.auto_publish?"an":"aus (unten in Einstellungen einschalten)"}`:"Noch nicht verbunden. Fehlt: "+(P.missing||[]).join(", ");}
   const T=S.tiktok;$("tt").innerHTML=!T.configured?`<span class="pill">TikTok-Schlüssel fehlen (.env)</span>`:T.connected?`<span class="pill" style="color:var(--ok)">TikTok verbunden</span> <button onclick="ttOff()" style="padding:5px 10px">Trennen</button>`:`<a href="/tiktok/login"><button class="p" style="padding:6px 12px">Mit TikTok verbinden</button></a>`;
   if(document.activeElement!==$("chin"))$("chin").value=S.channels.map(c=>c.name).join(", ");
   $("chips").innerHTML=S.channels.map(c=>{const w=c.worker,on=w&&!["beendet","Stream beendet"].includes(w.state)&&!String(w.state).startsWith("Fehler");
@@ -100,7 +116,7 @@ async function load(){
     $("clips").innerHTML=S.clips.map(c=>`<div class="clip"><video src="/clips/${encodeURIComponent(c.file)}" preload="metadata" controls playsinline></video>
     <div class="m"><div class="h">${esc(c.channel||"")} <span class="tag">${c.source==="vod"?"VOD":"Live"}</span></div>
     <div class="mut">${esc(c.reason||"")} · ${esc(c.time)} · ${c.size_mb} MB</div>${c.hook?`<div class="mut">„${esc(c.hook)}“</div>`:""}
-    ${c.tiktok?`<div class="mut">TikTok: ${esc(c.tiktok)}</div>`:""}${P.configured&&!String(c.tiktok||"").startsWith("gepostet")?`<button class="p" onclick="pub('${esc(c.file)}',this)">Veröffentlichen</button>`:""}<div class="a"><a href="/clips/${encodeURIComponent(c.file)}?dl=1">Download</a>${T.connected?`<button onclick="tt('${esc(c.file)}')" ${c.tiktok==="lädt hoch"?"disabled":""}>→ TikTok</button>`:""}<button onclick="del('${esc(c.file)}')">Löschen</button></div></div></div>`).join("")}
+    ${c.tiktok?`<div class="mut">TikTok: ${esc(c.tiktok)}</div>`:""}${P.configured&&!/^(gepostet|geplant)/.test(String(c.tiktok||""))?`<button class="p" onclick="pub('${esc(c.file)}',this)">Veröffentlichen</button>`:""}<div class="a"><a href="/clips/${encodeURIComponent(c.file)}?dl=1">Download</a>${T.connected?`<button onclick="tt('${esc(c.file)}')" ${c.tiktok==="lädt hoch"?"disabled":""}>→ TikTok</button>`:""}<button onclick="del('${esc(c.file)}')">Löschen</button></div></div></div>`).join("")}
   if(!$("set").dataset.done){$("set").dataset.done=1;$("set").innerHTML=SET.map(([k,l,t])=>`<label>${l}${t==="bool"?`<select id="s_${k}"><option value="1">an</option><option value="0">aus</option></select>`:`<input id="s_${k}" type="${t==="num"?"number":"text"}" step="any">`}</label>`).join("");
     SET.forEach(([k,,t])=>{const e=$("s_"+k);e.value=t==="bool"?(S.settings[k]?"1":"0"):S.settings[k]})}
 }
@@ -114,6 +130,7 @@ async function pub(f,btn){const box=btn.parentElement;if(box.querySelector("text
 async function tt(f){try{await api("/api/tiktok/upload",{file:f})}catch(e){alert(e.message)}shown="";load()}
 async function ttOff(){if(confirm("TikTok trennen?")){await api("/api/tiktok/disconnect",{});shown="";load()}}
 async function del(f){if(confirm("Clip löschen?")){await api("/api/delete",{file:f});shown="";load()}}
+async function savePub(){$("pbmsg").textContent="prüfe…";try{const r=await api("/api/publisher",{buffer_api_key:$("pb_key").value,cloudinary_cloud_name:$("pb_cloud").value,cloudinary_upload_preset:$("pb_preset").value});$("pb_key").value="";$("pbmsg").textContent=r.message;load()}catch(e){$("pbmsg").textContent=e.message}}
 async function saveSettings(){const d={};SET.forEach(([k,,t])=>{const v=$("s_"+k).value;d[k]=t==="bool"?v==="1":t==="num"?Number(v):v});await api("/api/settings",d);load()}
 load();setInterval(load,4000);
 </script>

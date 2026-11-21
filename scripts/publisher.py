@@ -1,21 +1,30 @@
-"""Öffentlich auf TikTok posten über OmniSocials (offiziell geprüfte TikTok-Anbindung).
+"""Öffentlich auf TikTok posten über Buffer (kostenloser Tarif, offiziell geprüfte TikTok-Anbindung).
 
-Wird von der Mac-App (Knopf „Veröffentlichen“) und von GitHub Actions (automatisch) benutzt.
-Braucht OMNISOCIALS_API_KEY (https://app.omnisocials.com/settings/api) und ein in OmniSocials
-verbundenes TikTok-Konto. Nur Standardbibliothek.
+Ablauf: Clip per *unsigned* Upload zu Cloudinary (kostenlos, kein geheimer Schlüssel nötig) ->
+öffentlicher HTTPS-Link -> Buffer-API `createPost` für den verbundenen TikTok-Kanal.
+
+Einstellungen (in ~/CLIPFORGE/.env bzw. als GitHub-Secret/Variable):
+  BUFFER_API_KEY            geheim – https://publish.buffer.com/settings/api (trägt der Nutzer selbst ein)
+  CLOUDINARY_CLOUD_NAME     nicht geheim – Name des Cloudinary-Kontos
+  CLOUDINARY_UPLOAD_PRESET  nicht geheim – Name eines *unsigned* Upload-Presets
+  BUFFER_CHANNEL_ID         optional – sonst wird der erste TikTok-Kanal genommen
+Nur Standardbibliothek. TikTok erlaubt über APIs insgesamt ca. 15 Posts pro Konto und Tag.
 """
 from __future__ import annotations
 
-import base64
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
+import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-API = os.getenv("OMNISOCIALS_BASE_URL", "https://api.omnisocials.com/v1")
-MAX_BYTES = 50 * 1024 * 1024
+BUFFER_API = os.getenv("BUFFER_API_URL", "https://api.buffer.com")
+CLOUDINARY_API = os.getenv("CLOUDINARY_API_URL", "https://api.cloudinary.com/v1_1")
+MAX_BYTES = 100 * 1024 * 1024
 DEFAULT_TAGS = "#gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral"
 
 
@@ -23,46 +32,77 @@ class PublishError(RuntimeError):
     pass
 
 
-def _key() -> str:
-    k = os.getenv("OMNISOCIALS_API_KEY", "")
-    if not k:
-        raise PublishError("OMNISOCIALS_API_KEY fehlt (in ~/CLIPFORGE/.env bzw. als GitHub-Secret)")
-    return k
+def configured() -> bool:
+    return all(os.getenv(k) for k in ("BUFFER_API_KEY", "CLOUDINARY_CLOUD_NAME", "CLOUDINARY_UPLOAD_PRESET"))
 
 
-def _call(method: str, path: str, body: dict | None = None, timeout: int = 300) -> dict:
-    data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(API + path, data=data, method=method, headers={
-        "Authorization": f"Bearer {_key()}", "Content-Type": "application/json"})
+def missing() -> list[str]:
+    return [k for k in ("BUFFER_API_KEY", "CLOUDINARY_CLOUD_NAME", "CLOUDINARY_UPLOAD_PRESET") if not os.getenv(k)]
+
+
+# ---------- Buffer (GraphQL) ----------
+def _gql(query: str, timeout: int = 60) -> dict:
+    key = os.getenv("BUFFER_API_KEY", "")
+    if not key:
+        raise PublishError("BUFFER_API_KEY fehlt (in ~/CLIPFORGE/.env bzw. als GitHub-Secret)")
+    req = urllib.request.Request(BUFFER_API, data=json.dumps({"query": query}).encode(), method="POST",
+                                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             out = json.load(r)
     except urllib.error.HTTPError as e:
-        try:
-            err = (json.load(e).get("error") or {})
-        except ValueError:
-            err = {}
-        raise PublishError(f"OmniSocials {e.code}: {err.get('message') or err.get('code') or 'Fehler'}") from None
-    if isinstance(out, dict) and out.get("error"):
-        raise PublishError(f"OmniSocials: {out['error'].get('message', out['error'])}")
-    return out.get("data", out) if isinstance(out, dict) else out
+        raise PublishError(f"Buffer {e.code}: {e.read()[:200].decode(errors='ignore')}") from None
+    if out.get("errors"):
+        raise PublishError("Buffer: " + "; ".join(str(x.get("message", x)) for x in out["errors"])[:300])
+    return out.get("data") or {}
 
 
-def configured() -> bool:
-    return bool(os.getenv("OMNISOCIALS_API_KEY"))
+def _s(text: str) -> str:
+    """String-Literal für GraphQL (JSON-Escaping ist gültiges GraphQL)."""
+    return json.dumps(text, ensure_ascii=False)
 
 
 def tiktok_channel() -> str:
-    """ID des verbundenen TikTok-Kontos in OmniSocials (oder OMNISOCIALS_TIKTOK_ID)."""
-    if os.getenv("OMNISOCIALS_TIKTOK_ID"):
-        return os.environ["OMNISOCIALS_TIKTOK_ID"]
-    accounts = _call("GET", "/accounts")
-    for a in accounts if isinstance(accounts, list) else []:
-        if str(a.get("platform", "")).lower() == "tiktok" and str(a.get("status", "active")).lower() in ("active", "connected", ""):
-            return str(a["id"])
-    raise PublishError("Kein TikTok-Konto in OmniSocials verbunden")
+    if os.getenv("BUFFER_CHANNEL_ID"):
+        return os.environ["BUFFER_CHANNEL_ID"]
+    orgs = (_gql("query { account { organizations { id name } } }").get("account") or {}).get("organizations") or []
+    for org in orgs:
+        chans = _gql("query { channels(input: {organizationId: %s}) { id service name isQueuePaused } }"
+                     % _s(org["id"])).get("channels") or []
+        for c in chans:
+            if str(c.get("service", "")).lower() == "tiktok":
+                return str(c["id"])
+    raise PublishError("Kein TikTok-Kanal in Buffer verbunden")
 
 
+# ---------- Cloudinary (öffentlicher Link) ----------
+def host_video(video: Path) -> str:
+    cloud, preset = os.getenv("CLOUDINARY_CLOUD_NAME", ""), os.getenv("CLOUDINARY_UPLOAD_PRESET", "")
+    if not cloud or not preset:
+        raise PublishError("CLOUDINARY_CLOUD_NAME / CLOUDINARY_UPLOAD_PRESET fehlen")
+    b = uuid.uuid4().hex
+    head = (f"--{b}\r\nContent-Disposition: form-data; name=\"upload_preset\"\r\n\r\n{preset}\r\n"
+            f"--{b}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{video.name}\"\r\n"
+            f"Content-Type: video/mp4\r\n\r\n").encode()
+    body = head + video.read_bytes() + f"\r\n--{b}--\r\n".encode()
+    req = urllib.request.Request(f"{CLOUDINARY_API}/{cloud}/video/upload", data=body, method="POST",
+                                 headers={"Content-Type": f"multipart/form-data; boundary={b}"})
+    try:
+        with urllib.request.urlopen(req, timeout=600) as r:
+            out = json.load(r)
+    except urllib.error.HTTPError as e:
+        try:
+            msg = (json.load(e).get("error") or {}).get("message", "")
+        except ValueError:
+            msg = ""
+        raise PublishError(f"Cloudinary {e.code}: {msg or 'Upload fehlgeschlagen'}") from None
+    url = out.get("secure_url", "")
+    if not url.startswith("https://"):
+        raise PublishError("Cloudinary lieferte keinen HTTPS-Link")
+    return url
+
+
+# ---------- Beschreibung ----------
 def build_caption(channel: str, hook: str = "", tags: str | None = None) -> str:
     """Beschreibung mit Hook, Quelle (Streamer) und Hashtags; max. 2200 Zeichen (TikTok)."""
     tags = (tags if tags is not None else os.getenv("CAPTION_TAGS", DEFAULT_TAGS)).strip()
@@ -74,20 +114,25 @@ def build_caption(channel: str, hook: str = "", tags: str | None = None) -> str:
     return "\n\n".join(p for p in (head, src, tags) if p)[:2200]
 
 
-def publish(video: Path, caption: str, dry_run: bool = False) -> dict:
-    """Lädt die MP4 hoch und veröffentlicht sie sofort öffentlich auf TikTok."""
+# ---------- Posten ----------
+def publish(video: Path, caption: str, dry_run: bool = False, delay_minutes: int = 3) -> dict:
+    """Clip hosten und über Buffer in wenigen Minuten öffentlich auf TikTok posten."""
     size = video.stat().st_size
     if size > MAX_BYTES:
-        raise PublishError("Clip größer als 50 MB")
+        raise PublishError("Clip größer als 100 MB")
     channel = tiktok_channel()
     if dry_run:
         return {"dry_run": True, "channel": channel, "bytes": size}
-    media = _call("POST", "/media/upload-from-base64", {
-        "data": base64.b64encode(video.read_bytes()).decode(), "mime_type": "video/mp4", "filename": video.name})
-    mid = media.get("id") if isinstance(media, dict) else None
-    if not mid:
-        raise PublishError("Upload zu OmniSocials lieferte keine Media-ID")
-    post = _call("POST", "/posts/create-and-publish", {
-        "content": caption, "channels": [channel], "type": "reel", "media_ids": [mid],
-        "tiktok": {"privacy_level": os.getenv("TIKTOK_PRIVACY", "PUBLIC_TO_EVERYONE")}})
-    return {"post_id": post.get("id"), "status": post.get("status"), "url": post.get("app_url", "")}
+    url = host_video(video)
+    due = (datetime.now(timezone.utc) + timedelta(minutes=delay_minutes)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    q = ("mutation { createPost(input: {text: %s, channelId: %s, schedulingType: automatic, mode: customScheduled, "
+         "dueAt: %s, assets: [{video: {url: %s, metadata: {thumbnailOffset: 1500}}}]}) "
+         "{ ... on PostActionSuccess { post { id } } ... on MutationError { message } } }"
+         % (_s(caption), _s(channel), _s(due), _s(url)))
+    res = _gql(q).get("createPost") or {}
+    if res.get("message"):
+        raise PublishError("Buffer: " + res["message"])
+    pid = (res.get("post") or {}).get("id")
+    if not pid:
+        raise PublishError("Buffer lieferte keine Post-ID")
+    return {"post_id": pid, "status": "geplant", "due": due, "video_url": url, "at": time.time()}

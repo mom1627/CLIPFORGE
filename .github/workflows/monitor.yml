@@ -42,9 +42,12 @@ jobs:
       RELEASE_TAG: clips
       MAX_CLIPS: ${{ inputs.max_clips || '12' }}
       CAPTIONS: "1"
-      OMNISOCIALS_API_KEY: ${{ secrets.OMNISOCIALS_API_KEY }}
+      BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+      BUFFER_CHANNEL_ID: ${{ vars.BUFFER_CHANNEL_ID }}
+      CLOUDINARY_CLOUD_NAME: ${{ vars.CLOUDINARY_CLOUD_NAME }}
+      CLOUDINARY_UPLOAD_PRESET: ${{ vars.CLOUDINARY_UPLOAD_PRESET }}
       AUTO_PUBLISH: ${{ vars.AUTO_PUBLISH || '0' }}
-      MAX_POSTS: ${{ vars.MAX_POSTS || '3' }}
+      MAX_POSTS: ${{ vars.MAX_POSTS || '4' }}
       CAPTION_TAGS: ${{ vars.CAPTION_TAGS }}
       WHISPER_MODEL: ${{ vars.WHISPER_MODEL || 'small' }}
       HOOKS: ${{ vars.HOOKS }}

@@ -22,7 +22,7 @@ HOME = Path(os.getenv("CLIPFORGE_HOME", Path.home() / "CLIPFORGE"))
 NAME = re.compile(r"^[a-z0-9_]{3,25}$")
 DEFAULTS = {"channels": [], "auto_watch": True, "max_parallel": 6, "spike_db": 7, "chat_ratio": 2.5,
             "min_gap": 120, "pre_seconds": 38, "captions": True, "max_clips_per_stream": 20,
-            "vod_hours": 48, "vod_max_clips": 5, "vod_title_filter": "", "tiktok_auto": False, "cams": {}, "auto_publish": False, "max_posts_per_day": 4,
+            "vod_hours": 48, "vod_max_clips": 5, "vod_title_filter": "", "tiktok_auto": False, "cams": {}, "auto_publish": False, "max_posts_per_day": 15, "post_gap_minutes": 60,
             "caption_tags": publisher.DEFAULT_TAGS}
 
 
@@ -137,6 +137,10 @@ class Manager:
                         self.start_watch(ch)
                     except RuntimeError:
                         pass
+            try:
+                self._auto_post_tick()
+            except Exception as exc:  # Posten darf die Überwachung nie stoppen
+                print("Auto-Posten:", exc)
             time.sleep(60)
 
     def start(self):
@@ -190,22 +194,84 @@ class Manager:
 
     # ---------- TikTok ----------
     def _new_clip(self, meta: dict):
-        if self.cfg.get("auto_publish") and publisher.configured() and self._posts_today() < int(self.cfg["max_posts_per_day"]):
-            self.publish(meta["file"])
+        if self.cfg.get("auto_publish") and publisher.configured():
+            self._auto_post_tick()  # postet sofort, wenn Tageslimit und Abstand es erlauben, sonst später
         elif self.cfg.get("tiktok_auto") and self.tiktok.connected():
             self.upload_tiktok(meta["file"])
 
-    # ---------- Öffentlich posten (OmniSocials) ----------
-    def _posts_today(self) -> int:
-        today = time.strftime("%Y-%m-%d")
-        n = 0
+    # ---------- Öffentlich posten (Buffer) ----------
+    def _metas(self) -> list[dict]:
+        out = []
         for j in self.clips_dir.glob("*.json"):
             try:
-                if str(json.loads(j.read_text(encoding="utf-8")).get("posted_at", "")).startswith(today):
-                    n += 1
+                m = json.loads(j.read_text(encoding="utf-8"))
+            except ValueError:
+                continue
+            m.setdefault("file", j.with_suffix(".mp4").name)
+            out.append(m)
+        return out
+
+    def _post_times(self) -> list[float]:
+        t = []
+        for m in self._metas():
+            try:
+                t.append(time.mktime(time.strptime(str(m.get("posted_at", ""))[:16], "%Y-%m-%d %H:%M")))
             except ValueError:
                 pass
-        return n
+        return t
+
+    def _posts_today(self) -> int:
+        return sum(1 for x in self._post_times() if time.time() - x < 86400)  # rollierende 24 h wie bei TikTok
+
+    def _auto_post_tick(self):
+        """Postet den stärksten noch nicht geposteten Clip, wenn Limit (24 h) und Mindestabstand es erlauben."""
+        if not (self.cfg.get("auto_publish") and publisher.configured()):
+            return
+        if any(v == "wird gepostet" for v in self.uploads.values()):
+            return
+        times = self._post_times()
+        if sum(1 for x in times if time.time() - x < 86400) >= int(self.cfg.get("max_posts_per_day", 15)):
+            return
+        if times and time.time() - max(times) < 60 * float(self.cfg.get("post_gap_minutes", 60)):
+            return
+        cands = [m for m in self._metas() if not m.get("posted_at") and not str(m.get("tiktok", "")).startswith("Fehler")
+                 and (self.clips_dir / m["file"]).exists()
+                 and time.time() - (self.clips_dir / m["file"]).stat().st_mtime < 12 * 3600]
+        if not cands:
+            return
+        best = max(cands, key=lambda m: (float(m.get("strength") or 1), (self.clips_dir / m["file"]).stat().st_mtime))
+        self.publish(best["file"])
+
+    def set_publisher(self, data: dict) -> dict:
+        """Buffer/Cloudinary-Einstellungen in ~/CLIPFORGE/.env speichern (Schlüssel gibt der Nutzer selbst ein,
+        er wird nie zurückgegeben oder geloggt) und die Verbindung prüfen."""
+        allowed = {"buffer_api_key": "BUFFER_API_KEY", "cloudinary_cloud_name": "CLOUDINARY_CLOUD_NAME",
+                   "cloudinary_upload_preset": "CLOUDINARY_UPLOAD_PRESET"}
+        new = {env: str(data[k]).strip() for k, env in allowed.items() if str(data.get(k, "")).strip()}
+        for v in new.values():
+            if any(c in v for c in "\r\n=") or len(v) > 300:
+                raise ValueError("Ungültiger Wert")
+        envf = self.home / ".env"
+        lines = envf.read_text(encoding="utf-8").splitlines() if envf.exists() else []
+        done = set()
+        for i, ln in enumerate(lines):
+            k = ln.split("=", 1)[0].strip()
+            if k in new:
+                lines[i] = f"{k}={new[k]}"; done.add(k)
+        lines += [f"{k}={v}" for k, v in new.items() if k not in done]
+        envf.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        try:
+            os.chmod(envf, 0o600)
+        except OSError:
+            pass
+        os.environ.update(new)
+        if not publisher.configured():
+            return {"ok": False, "message": "Noch fehlt: " + ", ".join(publisher.missing())}
+        try:
+            publisher.tiktok_channel()
+        except publisher.PublishError as exc:
+            return {"ok": False, "message": str(exc)}
+        return {"ok": True, "message": "Buffer verbunden, TikTok-Kanal gefunden ✓"}
 
     def caption_for(self, name: str) -> str:
         meta = {}
@@ -221,7 +287,7 @@ class Manager:
         if "/" in name or not name.endswith(".mp4") or not (self.clips_dir / name).exists():
             raise ValueError("Clip nicht gefunden")
         if not publisher.configured():
-            raise RuntimeError("OMNISOCIALS_API_KEY fehlt in ~/CLIPFORGE/.env")
+            raise RuntimeError("Fehlt in ~/CLIPFORGE/.env: " + ", ".join(publisher.missing()))
         if self.uploads.get(name) == "wird gepostet":
             return
         text = (caption or self.caption_for(name)).strip()
@@ -230,11 +296,12 @@ class Manager:
         def job():
             try:
                 r = publisher.publish(self.clips_dir / name, text)
-                self.uploads[name] = "gepostet ✓"
-                self._set_meta(name, tiktok="gepostet ✓", posted_at=time.strftime("%Y-%m-%d %H:%M"),
-                               caption=text, omnisocials_post=r.get("post_id"))
+                self.uploads[name] = "geplant ✓ (Buffer)"
+                self._set_meta(name, tiktok="geplant ✓ (Buffer)", posted_at=time.strftime("%Y-%m-%d %H:%M"),
+                               caption=text, buffer_post=r.get("post_id"))
             except (publisher.PublishError, OSError) as exc:
                 self.uploads[name] = f"Fehler: {exc}"[:160]
+                self._set_meta(name, tiktok=f"Fehler: {exc}"[:160])
         threading.Thread(target=job, daemon=True).start()
 
     def _set_meta(self, name: str, **kv):
@@ -298,4 +365,4 @@ class Manager:
                 "vod": self.vod_job, "clips": self.clips(),
                 "twitch_keys": bool(os.getenv("TWITCH_CLIENT_ID") and os.getenv("TWITCH_CLIENT_SECRET")),
                 "tiktok": {"configured": self.tiktok.configured(), "connected": self.tiktok.connected()},
-                "publisher": {"configured": publisher.configured(), "posts_today": self._posts_today()}}
+                "publisher": {"configured": publisher.configured(), "posts_today": self._posts_today(), "missing": publisher.missing()}}

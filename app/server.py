@@ -166,6 +166,10 @@ def make_handler(mgr: Manager, token: str | None):
                 if u.path == "/api/publish":
                     mgr.publish(d["file"], d.get("caption"))
                     return self._json({"ok": True})
+                if u.path == "/api/publisher":
+                    if self.client_address[0] not in ("127.0.0.1", "::1"):
+                        return self._json({"error": "Schlüssel bitte am Mac eintragen"}, 403)
+                    return self._json(mgr.set_publisher(d))
                 if u.path == "/api/caption":
                     return self._json({"caption": mgr.caption_for(d["file"])})
                 if u.path == "/api/cam":

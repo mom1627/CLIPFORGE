@@ -70,3 +70,12 @@ Laufzeitdaten: `~/CLIPFORGE/clips/` (MP4 + JSON je Clip), `~/CLIPFORGE/config.js
 - Nichts als fertig melden ohne Test mit echtem Clip.
 - Nur Streamer aus der Freigabeliste; keine Umgehung von TikTok-/Twitch-Regeln.
 - Tests: `python3 -m unittest discover -s tests` (alle grün, Stand 37+).
+
+## Update 21.11. – Buffer statt OmniSocials (kostenlos)
+- Nutzer will nichts bezahlen und möglichst viele Posts. **TikTok erlaubt über APIs ca. 15 Posts pro Konto in 24 h** (für alle Tools zusammen). Ziel daher: 15/Tag, ein Konto.
+- `scripts/publisher.py` ist jetzt: Clip per **unsigned Upload zu Cloudinary** (kostenlos, kein Geheimnis) → öffentlicher HTTPS-Link → **Buffer GraphQL `createPost`** (`https://api.buffer.com`, Bearer-Key, `mode: customScheduled`, `dueAt` = jetzt + 3 min) für den TikTok-Kanal. Buffer hat keine Upload-API, braucht direkten öffentlichen Link (Doku: developers.buffer.com/guides/hosting-media.html).
+- Einstellungen: `BUFFER_API_KEY` (geheim), `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_UPLOAD_PRESET`, optional `BUFFER_CHANNEL_ID`. Mac-App: Bereich „Automatisch auf TikTok posten“ → schreibt in `~/CLIPFORGE/.env` (nur von localhost, Schlüssel wird nie zurückgegeben) und prüft, ob ein TikTok-Kanal gefunden wird.
+- Automatik (`Manager._auto_post_tick`, jede Minute): postet den stärksten ungeposteten Clip der letzten 12 h, max. `max_posts_per_day` (Standard 15, rollierend 24 h), Mindestabstand `post_gap_minutes` (Standard 60).
+- GitHub `monitor.yml`: Secret `BUFFER_API_KEY`, Variablen `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_UPLOAD_PRESET`, `MAX_POSTS` (pro Lauf, Standard 4; Läufe alle 6 h ≈ 16/Tag), `POST_GAP_MINUTES`.
+- **Noch nicht gegen echtes Buffer/Cloudinary getestet** (nur Fake-Server, `tests/test_publisher.py`, `tests/test_autopost.py`). Offen: prüfen, ob Buffer Free TikTok-Videoposts per API annimmt und wie viele geplante Posts der Free-Tarif gleichzeitig erlaubt; Cloudinary-Free-Kontingent (Speicher) im Blick behalten, alte Videos dort löschen.
+- OmniSocials ist entfernt (kostenpflichtig).

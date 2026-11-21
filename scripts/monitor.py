@@ -188,7 +188,9 @@ def main() -> int:
                             if os.getenv("AUTO_PUBLISH") == "1" and publisher.configured() and \
                                     sum(1 for c in report["clips"] if c.get("posted")) < int(env_f("MAX_POSTS", 3)):
                                 try:
-                                    r = publisher.publish(mp4, publisher.build_caption(live))
+                                    n_done = sum(1 for c in report["clips"] if c.get("posted"))
+                                    r = publisher.publish(mp4, publisher.build_caption(live),
+                                                          delay_minutes=3 + int(env_f("POST_GAP_MINUTES", 60)) * n_done)
                                     posted = r.get("post_id") or "ok"
                                     print(f"Auf TikTok veröffentlicht: {mp4.name}", flush=True)
                                 except publisher.PublishError as exc:

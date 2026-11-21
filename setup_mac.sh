@@ -24,8 +24,11 @@ TWITCH_CLIENT_SECRET=
 # Redirect-URI: http://localhost:8787/tiktok/callback
 TIKTOK_CLIENT_KEY=
 TIKTOK_CLIENT_SECRET=
-# OmniSocials-API-Schlüssel (öffentlich auf TikTok posten): https://app.omnisocials.com/settings/api
-OMNISOCIALS_API_KEY=
+# Öffentlich auf TikTok posten (kostenlos): Buffer-Schlüssel https://publish.buffer.com/settings/api
+BUFFER_API_KEY=
+# Cloudinary (kostenlos): Cloud-Name und Name eines UNSIGNED Upload-Presets
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_UPLOAD_PRESET=
 ENV
   chmod 600 "$HOME_DIR/.env"
 fi
