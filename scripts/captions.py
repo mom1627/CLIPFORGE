@@ -109,22 +109,130 @@ def probe(path: Path):
     return int(a[0]), int(a[1]), float(b)
 
 
+def has_ass_filter() -> bool:
+    """Homebrew-ffmpeg auf dem Mac hat oft kein libass -> dann Pillow-Weg."""
+    if os.getenv("CAPTION_RENDERER", "").lower() == "pillow":
+        return False
+    try:
+        r = subprocess.run(["ffmpeg", "-hide_banner", "-filters"], capture_output=True, text=True, timeout=20)
+        return any(ln.split()[1:2] == ["ass"] for ln in r.stdout.splitlines() if ln.strip())
+    except Exception:
+        return False
+
+
+FONT_CANDIDATES = [
+    "/System/Library/Fonts/Supplemental/Arial Bold.ttf",            # macOS
+    "/System/Library/Fonts/Supplemental/Arial Black.ttf",
+    "/Library/Fonts/Arial Bold.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",          # Linux / GitHub
+    "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+    "C:/Windows/Fonts/arialbd.ttf",
+]
+
+
+def _font(size: int):
+    from PIL import ImageFont
+    for f in [os.getenv("CAPTION_FONT", "")] + FONT_CANDIDATES:
+        if f and Path(f).is_file():
+            try:
+                return ImageFont.truetype(f, size)
+            except OSError:
+                pass
+    try:
+        return ImageFont.load_default(size)
+    except TypeError:  # sehr altes Pillow
+        return ImageFont.load_default()
+
+
+def _draw_block(draw, text: str, font, cx: int, top: int, fill, stroke: int, shadow: int):
+    """Zentrierte, umrandete Zeilen ab y=top (wie ASS \\an8\\pos)."""
+    y = top
+    for line in text.split("\\N"):
+        box = draw.textbbox((0, 0), line, font=font, stroke_width=stroke)
+        w, h = box[2] - box[0], box[3] - box[1]
+        x = cx - w // 2 - box[0]
+        if shadow:
+            draw.text((x + shadow, y + shadow - box[1]), line, font=font, fill=(0, 0, 0, 140),
+                      stroke_width=stroke, stroke_fill=(0, 0, 0, 140))
+        draw.text((x, y - box[1]), line, font=font, fill=fill, stroke_width=stroke, stroke_fill=(0, 0, 0, 255))
+        y += int(h * 1.18)
+
+
+def build_overlay_frames(words, hook: str, width: int, height: int, duration: float, outdir: Path,
+                         hook_seconds: float = 2.8, split: bool = False) -> Path:
+    """Zeichnet Hook + Untertitel als transparente PNGs und schreibt eine concat-Liste (Bild + Dauer)."""
+    from PIL import Image, ImageDraw
+    fs, hs = round(width * 0.078), round(width * 0.092)
+    sub_y = round(height * (0.80 if split else 0.735))
+    hook_y = round(height * (0.40 - 0.07) if split else height * 0.22)
+    f_sub, f_hook = _font(fs), _font(hs)
+    hook_fill = (255, 255, 255, 255) if split else (255, 210, 0, 255)
+    hook_end = min(hook_seconds, duration)
+    subs = [(a, min(b, duration), wrap(_esc(t), 14)) for a, b, t in group_words(words) if a < duration]
+    cuts = sorted({0.0, hook_end, duration, *[x for a, b, _ in subs for x in (a, b)]})
+    cuts = [c for c in cuts if 0 <= c <= duration]
+    outdir.mkdir(parents=True, exist_ok=True)
+    cache, lines = {}, ["ffconcat version 1.0"]
+    for a, b in zip(cuts, cuts[1:]):
+        if b - a < 0.01:
+            continue
+        mid = (a + b) / 2
+        hook_on = mid < hook_end
+        sub = next((t for s, e, t in subs if s <= mid < e), "")
+        key = (hook_on, sub)
+        if key not in cache:
+            img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+            d = ImageDraw.Draw(img)
+            if hook_on:
+                _draw_block(d, wrap(_esc(hook.upper()), 16), f_hook, width // 2, hook_y, hook_fill, max(4, hs // 10), 4)
+            if sub:
+                _draw_block(d, sub, f_sub, width // 2, sub_y, (255, 255, 255, 255), max(3, fs // 12), 2)
+            path = outdir / f"o{len(cache):03d}.png"
+            img.save(path, optimize=True)
+            cache[key] = path
+        lines += [f"file '{cache[key].name}'", f"duration {b - a:.3f}"]
+    if not cache:
+        raise RuntimeError("Clip zu kurz fuer Untertitel")
+    lines.append(lines[-2])  # concat-Demuxer braucht das letzte Bild nochmal, sonst fehlt dessen Dauer
+    lst = outdir / "overlay.txt"
+    lst.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return lst
+
+
 def add_captions(mp4: Path, channel: str, seed: str = "", split: bool | None = None) -> Path:
-    """Burn hook + subtitles into mp4 (in place on success). Falls back to the original on any error."""
+    """Burn hook + subtitles into mp4 (in place on success). Falls back to the original on any error.
+    Mit libass: ASS-Filter. Ohne libass (Homebrew auf dem Mac): Pillow-PNGs + overlay."""
+    import shutil
+    tmp = None
     try:
         w, h, d = probe(mp4)
         words, lang = transcribe(mp4)
-        ass = mp4.with_suffix(".ass")
-        ass.write_text(build_ass(words, pick_hook(channel, seed or mp4.name, lang), w, h, d, split=(os.getenv('VIDEO_FIT', 'split') == 'split') if split is None else split), encoding="utf-8")
+        split = (os.getenv("VIDEO_FIT", "split") == "split") if split is None else split
+        hook = pick_hook(channel, seed or mp4.name, lang)
         out = mp4.with_name(mp4.stem + "_cap.mp4")
-        r = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", mp4.name,
-                            "-vf", f"ass={ass.name}", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
-                            "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart", out.name],
-                           capture_output=True, text=True, cwd=str(mp4.parent), timeout=300)
+        enc = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
+               "-c:a", "copy", "-movflags", "+faststart", out.name]
+        if has_ass_filter():
+            ass = mp4.with_suffix(".ass")
+            ass.write_text(build_ass(words, hook, w, h, d, split=split), encoding="utf-8")
+            cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", mp4.name, "-vf", f"ass={ass.name}"] + enc
+            how = "ass"
+        else:
+            tmp = mp4.with_name(mp4.stem + "_ov")
+            lst = build_overlay_frames(words, hook, w, h, d, tmp, split=split)
+            cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", mp4.name,
+                   "-f", "concat", "-safe", "0", "-i", str(lst.relative_to(mp4.parent)),
+                   "-filter_complex", "[0:v][1:v]overlay=0:0:eof_action=repeat:format=auto[v]",
+                   "-map", "[v]", "-map", "0:a?", "-t", f"{d:.3f}"] + enc
+            how = "pillow"
+        r = subprocess.run(cmd, capture_output=True, text=True, cwd=str(mp4.parent), timeout=600)
         if r.returncode or not out.exists() or out.stat().st_size < 10_000:
             print("Untertitel-Rendern fehlgeschlagen:", r.stderr[-300:]); return mp4
-        print(f"Untertitel: {len(words)} Woerter, Sprache {lang}")
+        print(f"Untertitel ({how}): {len(words)} Woerter, Sprache {lang}")
         mp4.unlink(); out.rename(mp4)
         return mp4
     except Exception as e:
         print("Captions uebersprungen:", e); return mp4
+    finally:
+        if tmp is not None:
+            shutil.rmtree(tmp, ignore_errors=True)

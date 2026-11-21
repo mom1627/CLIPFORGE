@@ -26,7 +26,7 @@ Laufzeitdaten: `~/CLIPFORGE/clips/` (MP4 + JSON je Clip), `~/CLIPFORGE/config.js
 | TikTok Upload als Entwurf (Content Posting API, Scope `video.upload`, Inbox) | `app/tiktok.py::upload_draft` | 1 Clip erfolgreich angekommen |
 
 ## Offene Probleme
-1. **Hook/Untertitel fehlen in Mac-Clips.** Homebrew-ffmpeg hat kein libass → Filter `ass=` schlägt fehl
+1. ~~**Hook/Untertitel fehlen in Mac-Clips.**~~ **Gelöst 21.11.:** ohne libass zeichnet `captions.py` Hook/Untertitel mit Pillow (PNG + concat + `overlay`), Test `tests/test_captions_overlay.py`. Auf dem Mac einmal `./setup_mac.sh` bzw. `venv/bin/pip install Pillow` nötig. Ursprünglich: Homebrew-ffmpeg hat kein libass → Filter `ass=` schlägt fehl
    („Error parsing filter description“). Lösung: Untertitel/Hook mit Pillow als transparente PNGs rendern und per
    `overlay=enable='between(t,a,b)'` einbrennen (overlay ist immer vorhanden). Pillow in `app/requirements.txt` ergänzen.
    Datei: `scripts/captions.py::add_captions`.
@@ -59,7 +59,7 @@ Laufzeitdaten: `~/CLIPFORGE/clips/` (MP4 + JSON je Clip), `~/CLIPFORGE/config.js
 - Doppelte Posts vermeiden: Wenn die Mac-App läuft, GitHub-Workflow „Live-Monitor“ deaktivieren (oder CLOUD_ALWAYS aus).
 
 ## Nächste Schritte (Reihenfolge)
-1. Untertitel-Fix mit Pillow (Problem 1), Test mit echtem Clip auf dem Mac.
+1. ~~Untertitel-Fix mit Pillow~~ erledigt; noch mit echtem Live-Clip auf dem Mac prüfen.
 2. Weg B prüfen und, falls passend, Planer-API in `app/manager.py` als zweites Ziel neben `upload_tiktok` einbauen
    (Einstellung „Automatisch posten: aus / TikTok-Entwurf / Planer“), max. 3–5 Posts pro Tag, Abstand ≥ 2 h.
 3. Twitch-Schlüssel in `~/CLIPFORGE/.env` eintragen lassen (Nutzer), dann VOD-Knopf testen.
