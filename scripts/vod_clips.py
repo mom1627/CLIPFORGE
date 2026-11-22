@@ -522,6 +522,42 @@ def publish_results(records: list[dict]) -> None:
          "-R", os.environ["GITHUB_REPOSITORY"]], timeout=120)
 
 
+def release_meta() -> list[dict]:
+    with tempfile.TemporaryDirectory() as td:
+        r = cmd(["gh", "release", "download", RELEASE, "-R", os.environ.get("GITHUB_REPOSITORY", ""),
+                 "-p", "clips.json", "-D", td], timeout=90, check=False)
+        p = Path(td) / "clips.json"
+        return json.loads(p.read_text(encoding="utf-8")) if r.returncode == 0 and p.exists() else []
+
+
+def redo_clips(files: list[str], report: dict) -> int:
+    """Clips mit gleichem Namen neu erzeugen: Quelle und Startsekunde stehen in clips.json des Releases."""
+    meta = {r.get("file"): r for r in release_meta() if isinstance(r, dict)}
+    cams = json.loads((ROOT / "config/cams.json").read_text(encoding="utf-8"))
+    try:
+        with tempfile.TemporaryDirectory(prefix="redo_") as td:
+            for f in files:
+                m = meta.get(f)
+                if not m or not m.get("vod_link") or m.get("vod_offset_seconds") is None:
+                    report["skip_reasons"].append({"file": f, "reason": "keine Quelldaten"}); continue
+                off = int(m["vod_offset_seconds"])
+                start = utc_time(m["vod_timestamp"]) - timedelta(seconds=off)
+                vod = {"id": str(m.get("vod_id") or "vod"), "url": m["vod_link"], "duration": off + 120,
+                       "title": "", "channel": m.get("streamer") or f.split("_")[0], "created_at": start.isoformat()}
+                cand = Candidate(vod["channel"], vod["id"], off, off + 40, float(m.get("score") or 0), 0.0, 0.0, "")
+                try:
+                    row = produce(cand, vod, Path(td), cams)
+                    report["clips"].append(row)
+                except Exception as exc:
+                    report["skip_reasons"].append({"file": f, "reason": clean_error(str(exc))})
+        publish_results(report["clips"])
+        return 0 if report["clips"] else 2
+    finally:
+        (OUT / "vod_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        print("REDO-REPORT", json.dumps({"done": [c["file"] for c in report["clips"]],
+                                         "skipped": report["skip_reasons"]}, ensure_ascii=False), flush=True)
+
+
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
@@ -538,6 +574,9 @@ def main() -> int:
               "coverage_is_sampled": True, "warnings": [], "skip_reasons": [],
               "windows": [], "clips": []}
     success = False
+    redo = [f.strip() for f in os.getenv("REDO_FILES", "").split(",") if f.strip()]
+    if redo:  # vorhandene Clips aus dem Original-Stream neu schneiden (z. B. mit Facecam-Erkennung)
+        return redo_clips(redo, report)
     try:
         channels = allowed_channels(os.getenv("VOD_STREAMERS", ""))
         report["channels"] = channels
