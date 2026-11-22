@@ -14,7 +14,7 @@ class GameplayTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.t = tempfile.TemporaryDirectory(); d = Path(cls.t.name)
-        cls.moving = d / "m.mp4"; make(cls.moving, "testsrc2=size=360x640:rate=5")
+        cls.moving = d / "m.mp4"; make(cls.moving, "testsrc2=size=360x640:rate=5,noise=alls=40:allf=t")
         cls.still = d / "s.mp4"; make(cls.still, "color=c=gray:size=360x640:rate=5")
 
     @classmethod
