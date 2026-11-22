@@ -180,7 +180,7 @@ def vod_section(vod: dict, begin: int, end: int, folder: Path,
                 label: str, high_quality: bool = False) -> Path:
     if begin < 0 or end <= begin:
         raise ValueError("Ungueltiger VOD-Zeitbereich")
-    fmt = "best[height<=1080]/best" if high_quality else "worst[height<=480]/worst"
+    fmt = "bv*[height<=1080]+ba/b[height<=1080]/b" if high_quality else "worst[height<=480]/worst"
     prefix = folder / label
     args = ["yt-dlp", "--no-playlist", "--ignore-config", "--no-progress",
             "--no-warnings", "--retries", "1", "--fragment-retries", "1",
@@ -205,6 +205,36 @@ def score_event(db_levels: list[float], end: int, window: int = 8) -> float:
     peak = statistics.mean(db_levels[end-window:end])
     baseline = statistics.median(prior)
     return round(peak - baseline, 2)
+
+
+def url_vod(url: str, channel: str) -> dict:
+    """Beliebige VOD-URL (z. B. YouTube-Livestream-Aufzeichnung) per yt-dlp-Metadaten."""
+    info = json.loads(cmd(["yt-dlp", "--no-playlist", "--ignore-config", "--no-warnings",
+                           "--skip-download", "-J", url], timeout=180).stdout)
+    if info.get("is_live"):
+        raise RuntimeError("Stream läuft noch live – Clips erst aus der fertigen Aufzeichnung")
+    ts = info.get("release_timestamp") or info.get("timestamp") or time.time()
+    return {"id": str(info.get("id") or "vod"), "url": info.get("webpage_url") or url,
+            "duration": int(info.get("duration") or 0), "title": info.get("title") or "",
+            "channel": channel or (info.get("channel") or "creator").lower(),
+            "created_at": datetime.fromtimestamp(ts, timezone.utc).isoformat(),
+            "heatmap": info.get("heatmap") or []}
+
+
+def heatmap_peaks(heatmap: list[dict], duration: int, count: int, min_gap: int = 120,
+                  skip_start: int = 900) -> list[tuple[int, float]]:
+    """YouTube „Meistgesehen“: die stärksten Stellen (Sekunde, Wert), mit Mindestabstand."""
+    rows = sorted(((int((h["start_time"] + h["end_time"]) / 2), float(h.get("value", 0)))
+                   for h in heatmap if h.get("end_time") is not None), key=lambda r: -r[1])
+    out = []
+    for at, val in rows:
+        if at < skip_start or at > duration - 30:
+            continue
+        if all(abs(at - o) >= min_gap for o, _ in out):
+            out.append((at, val))
+        if len(out) >= count:
+            break
+    return out
 
 
 def chat_offsets(path: Path) -> list[float]:
@@ -479,10 +509,13 @@ def main() -> int:
     try:
         channels = allowed_channels(os.getenv("VOD_STREAMERS", ""))
         report["channels"] = channels
-        token = helix_token()
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         vods = []
-        for channel in channels:
+        vod_urls = [u.strip() for u in os.getenv("VOD_URL", "").split(",") if u.strip()]
+        for u in vod_urls:  # direkte Links (YouTube usw.), Creator = erster freigegebener Kanal
+            vods.append(url_vod(u, channels[0] if channels else ""))
+        token = helix_token() if not vod_urls else ""
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+        for channel in ([] if vod_urls else channels):
             try:
                 recent = list_recent_vods(channel, token, cutoff, vod_count, title_filter)
                 if not recent:
@@ -504,11 +537,21 @@ def main() -> int:
                 if time.monotonic() - started > 30 * 60:
                     report["warnings"].append("Zeitbudget erreicht: weitere VODs ausgelassen")
                     break
+                if vod.get("heatmap"):  # YouTube: Meistgesehen-Spitzen als Highlights
+                    hp = heatmap_peaks(vod["heatmap"], vod["duration"], max(4, max_clips * 2), min_gap=gap,
+                                       skip_start=bounded_int("VOD_SKIP_START", 900, 0, 7200))
+                    report["warnings"].append(f"Meistgesehen-Spitzen fuer {vod['id']}: {len(hp)}")
+                    for at, val in hp:
+                        start = int(max(0, min(vod["duration"] - 60, at - 30)))
+                        candidates.append(Candidate(vod["channel"], vod["id"], start, at,
+                                          round(val * 10, 2), 0.0, 0.0, vod["title"]))
+                    if hp:
+                        continue
                 chat_path = Path(os.getenv("CHAT_REPLAY_JSON_DIR", "data/chat")) / (vod["id"] + ".json")
                 chat = chat_offsets(chat_path)
                 if not chat:
                     report["warnings"].append("Chat-Replay nicht verfuegbar fuer VOD " + vod["id"])
-                peaks = [] if chat else chat_probe.chat_peaks(vod["id"], vod["duration"], count=max(4, max_clips * 2))
+                peaks = [] if chat or not vod["url"].startswith("https://www.twitch.tv") else chat_probe.chat_peaks(vod["id"], vod["duration"], count=max(4, max_clips * 2))
                 if peaks:  # schnell: Chat-Spitzen, nur kurze Ausschnitte laden
                     report["warnings"].append(f"Chat-Spitzen fuer VOD {vod['id']}: {len(peaks)}")
                     for off, ratio in peaks:
