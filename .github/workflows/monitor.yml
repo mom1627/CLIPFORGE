@@ -75,7 +75,7 @@ jobs:
       - name: Whisper-Modell vorab laden
         run: python -c "from faster_whisper import WhisperModel; WhisperModel('${{ vars.WHISPER_MODEL || 'small' }}', device='cpu', compute_type='int8')"
       - name: Tests
-        run: python -m unittest discover -s tests -p 'test_monitor.py' -v
+        run: CAMPAIGN= python -m unittest discover -s tests -p 'test_monitor.py' -v
       - name: Release "clips" anlegen (falls fehlend)
         run: gh release view clips >/dev/null 2>&1 || gh release create clips --title "CLIPFORGE Clips" --notes "Automatisch erzeugte 9:16-MP4-Clips" --latest=false
       - name: Live überwachen und clippen
