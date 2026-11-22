@@ -74,9 +74,9 @@ def allowed_channels(requested: str) -> list[str]:
         if not camp:
             raise
         approved = []
-    approved = camp + [c for c in approved if c not in camp]
+    approved = [c for c in camp + [c for c in approved if c not in camp] if c not in campaign.excluded()]
     if not requested.strip():
-        return camp or approved
+        return [c for c in camp if c not in campaign.excluded()] or approved
     names = []
     for raw in requested.split(","):
         name = raw.strip().lower().lstrip("@")

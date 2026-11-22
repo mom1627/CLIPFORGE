@@ -170,10 +170,17 @@ def render_vertical(source: Path, dest: Path, start: float, clip_seconds: int, d
         cam = [float(v) for v in cam_box] if cam_box else [float(v) for v in (os.getenv("CAM_BOX") or "0.727,0.60,0.26,0.40").split(",")]
         cx = min(1.0, max(0.0, float(os.getenv("CROP_X", "0.45") or 0.45)))
         gw = f"ih*{width}/{bot_h}"
+        # Facecam höchstens CAM_MAX_SCALE-fach vergrößern (sonst matschig) + schärfen; Rand mit
+        # unscharfem Hintergrund derselben Facecam füllen (wie professionelle Clip-Seiten).
+        ms = float(os.getenv("CAM_MAX_SCALE", "2.0"))
         filt = (
             "[0:v]split=2[a][b];"
-            f"[a]crop=iw*{cam[2]}:ih*{cam[3]}:iw*{cam[0]}:ih*{cam[1]},scale={width}:{top_h}:force_original_aspect_ratio=increase:flags=lanczos,crop={width}:{top_h}[t];"
-            f"[b]crop={gw}:ih:(iw-{gw})*{cx}:0,scale={width}:{bot_h}:flags=lanczos[g];"
+            f"[a]crop=iw*{cam[2]}:ih*{cam[3]}:iw*{cam[0]}:ih*{cam[1]},split=2[ca][cb];"
+            f"[ca]scale={width}:{top_h}:force_original_aspect_ratio=increase,crop={width}:{top_h},boxblur=18:2,eq=brightness=-0.06[tbg];"
+            f"[cb]scale=w='min(iw*{ms},{width})':h='min(ih*{ms},{top_h})':force_original_aspect_ratio=decrease:flags=lanczos,"
+            "unsharp=5:5:0.8:3:3:0.0,scale=trunc(iw/2)*2:trunc(ih/2)*2[tfg];"
+            "[tbg][tfg]overlay=(W-w)/2:(H-h)/2[t];"
+            f"[b]crop={gw}:ih:(iw-{gw})*{cx}:0,scale={width}:{bot_h}:flags=lanczos,unsharp=5:5:0.4:3:3:0.0[g];"
             "[t][g]vstack,format=yuv420p,tpad=stop_mode=clone:stop_duration=2[v]"
         )
     elif fit == "blur":
