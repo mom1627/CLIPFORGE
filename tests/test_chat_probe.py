@@ -12,5 +12,14 @@ class T(unittest.TestCase):
         self.assertEqual(c.pick_peaks([(i * 60, 1.0 + (i % 3) * 0.1) for i in range(100)], 5), [])
     def test_rate(self):
         self.assertAlmostEqual(c.rate_from_offsets([10 + i * 0.5 for i in range(50)], 0), 50 / 24.5, places=2)
+class ChapterTest(unittest.TestCase):
+    def test_in_game(self):
+        ch = [(0, 3600, "Just Chatting"), (3600, 9000, "Grand Theft Auto VI"), (9000, 12000, "Chess")]
+        self.assertTrue(c.in_game(ch, 4000, "Grand Theft Auto VI"))
+        self.assertFalse(c.in_game(ch, 100, "Grand Theft Auto VI"))
+        self.assertFalse(c.in_game(ch, 9500, "Grand Theft Auto VI"))
+        self.assertIsNone(c.in_game([], 100, "Grand Theft Auto VI"))
+
+
 if __name__ == "__main__":
     unittest.main()

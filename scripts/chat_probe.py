@@ -59,3 +59,43 @@ def chat_peaks(vod_id: str, duration: int, count: int = 6, probes: int = 360):
     if len(ok) < len(res) * 0.6:
         return []
     return pick_peaks(ok, count)
+
+
+CHAPTER_HASH = "8d2793384aac3773beab5e59bd5d6f585aedb923d292800119e03d40cd0f9b41"
+
+
+def game_chapters(vod_id: str, duration: int = 0):
+    """Spiel-Kapitel eines Twitch-VODs: [(start_s, end_s, spielname)]. [] = keine Kapitel (ein Spiel),
+    None = nicht ermittelbar. Gleicher inoffizieller Web-Endpunkt wie der Chat (vom Nutzer erlaubt)."""
+    body = json.dumps([{"operationName": "VideoPlayer_ChapterSelectButtonVideo",
+                        "variables": {"includePrivate": False, "videoID": str(vod_id)},
+                        "extensions": {"persistedQuery": {"version": 1, "sha256Hash": CHAPTER_HASH}}}]).encode()
+    req = urllib.request.Request(GQL, data=body, headers={"Client-ID": CLIENT, "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            data = json.load(r)
+        video = (data[0].get("data") or {}).get("video")
+        if video is None:
+            return None
+        edges = ((video.get("moments") or {}).get("edges")) or []
+    except Exception:
+        return None
+    out = []
+    for e in edges:
+        n = e.get("node") or {}
+        start = int(n.get("positionMilliseconds") or 0) // 1000
+        length = int(n.get("durationMilliseconds") or 0) // 1000
+        game = (((n.get("details") or {}).get("game")) or {}).get("displayName") or n.get("description") or ""
+        out.append((start, start + length if length else (duration or 10**9), game))
+    return out
+
+
+def in_game(chapters, second: int, game: str) -> bool | None:
+    """True/False, ob die Sekunde im Kapitel des Spiels liegt; None = unbekannt (keine Kapitel)."""
+    if not chapters:
+        return None
+    g = game.lower()
+    for a, b, name in chapters:
+        if a <= second < b:
+            return g in name.lower() or name.lower() in g
+    return False
