@@ -18,6 +18,11 @@ on:
         required: true
         default: "7"
         type: string
+      campaign:
+        description: "Kampagne (config/campaigns/<name>.json), z. B. dylanpage, clipup; leer = keine"
+        required: false
+        default: ""
+        type: string
       title_filter:
         description: "Optionaler Text im VOD-Titel (z. B. GTA); leer = alle"
         required: false
@@ -53,6 +58,7 @@ jobs:
       SCAN_SECONDS: "240"
       MIN_GAP: "120"
       CAPTION_STYLE: box
+      CAMPAIGN: ${{ inputs.campaign || '' }}
       PER_VOD: ${{ inputs.max_clips || '7' }}
       VOD_SKIP_START: "900"
       DEBUG_FRAMES: "1"
@@ -76,7 +82,7 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_vod_clips.py' -v
       - name: Voraussetzungen und Abgrenzung pruefen
         run: |
-          test -n "$APPROVED_CHANNELS" || { echo "::error::GitHub-Variable APPROVED_CHANNELS fehlt. Nur freigegebene Twitch-Kanaele duerfen verarbeitet werden."; exit 1; }
+          test -n "$APPROVED_CHANNELS" || test -n "$CAMPAIGN" || { echo "::error::GitHub-Variable APPROVED_CHANNELS fehlt. Nur freigegebene Twitch-Kanaele duerfen verarbeitet werden."; exit 1; }
           test -n "$TWITCH_CLIENT_ID" && test -n "$TWITCH_CLIENT_SECRET" || { echo "::error::Twitch-Helix-Secrets TWITCH_CLIENT_ID und TWITCH_CLIENT_SECRET fehlen."; exit 1; }
           echo "Nur oeffentliche VODs; keine Umgehung von Login, Abo oder geloeschten Videos."
       - name: FFmpeg, yt-dlp und faster-whisper installieren

@@ -169,7 +169,9 @@ def main() -> int:
     import campaign
     if campaign.game():  # aktive Kampagne verlangt ein bestimmtes Spiel (z. B. GTA VI)
         allowed = [campaign.game().lower()]
-    channels = lc.channels()
+    import campaign
+    camp = campaign.channels()  # Kampagnen-Creator zuerst (bei Kampagne mit festen Creatorn nur diese)
+    channels = camp or lc.channels()
     report = {"started": datetime.now(timezone.utc).isoformat(), "sessions": [], "clips": []}
     clips = 0
     while time.time() < budget and clips < max_clips:

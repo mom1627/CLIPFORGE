@@ -11,6 +11,9 @@ on:
       max_clips:
         description: "Maximale Anzahl Clips"
         default: "12"
+      campaign:
+        description: "Kampagne (z. B. clipup = Logo + #Clipup; dylanpage); leer = keine"
+        default: ""
       post:
         description: "Automatisch über Buffer posten (1 = ja, 0 = nein)"
         default: "1"
@@ -55,6 +58,7 @@ jobs:
       POST_GAP_MINUTES: ${{ vars.POST_GAP_MINUTES || '60' }}
       POST_SLOTS: ${{ vars.POST_SLOTS || '10,12,16,18,20' }}
       POST_TZ: Europe/Berlin
+      CAMPAIGN: ${{ inputs.campaign || vars.CAMPAIGN || '' }}
       POST_MODE: ${{ vars.POST_MODE || 'now' }}
       CAPTION_TAGS: ${{ vars.CAPTION_TAGS }}
       WHISPER_MODEL: ${{ vars.WHISPER_MODEL || 'small' }}

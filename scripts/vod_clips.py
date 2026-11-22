@@ -66,9 +66,17 @@ def cmd(args: list[str], *, timeout: int = 180, check: bool = True) -> subproces
 
 
 def allowed_channels(requested: str) -> list[str]:
-    approved = lc.channels()
+    import campaign
+    camp = campaign.channels()  # Kampagnen-Creator sind durch die Kampagne freigegeben
+    try:
+        approved = lc.channels()
+    except RuntimeError:
+        if not camp:
+            raise
+        approved = []
+    approved = camp + [c for c in approved if c not in camp]
     if not requested.strip():
-        return approved
+        return camp or approved
     names = []
     for raw in requested.split(","):
         name = raw.strip().lower().lstrip("@")
@@ -344,7 +352,12 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
         if duration - offset < 59.5:
             raise RuntimeError(f"VOD-Teilstueck zu kurz ({duration-offset:.2f}s); kein verkuerztes Video")
         os.environ["VIDEO_FIT"] = "split"
-        os.environ["GAMEPLAY_ASPECT"] = "4:5"
+        import campaign
+        c = campaign.load()
+        # Kampagnen mit "Creator muss im Fokus sein": größere Facecam (40 % statt 30 % der Höhe)
+        os.environ["GAMEPLAY_ASPECT"] = "" if c.get("focus") == "creator" else "4:5"
+        if c.get("language"):
+            os.environ["CAPTION_LANG"] = c["language"]
         os.environ["CAM_BOX"] = ",".join(str(x) for x in cams.get(
             candidate.channel, cams["default"]))
         os.environ["VIDEO_WIDTH"] = str(bounded_int("VIDEO_WIDTH", 720, 720, 1080))

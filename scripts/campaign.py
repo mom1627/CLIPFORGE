@@ -1,6 +1,6 @@
-"""Aktive Clipping-Kampagne (config/campaign.json): Logo, Pflicht-Hashtags, Pflicht-Spiel.
+"""Aktive Clipping-Kampagne (config/campaigns/<name>.json, Auswahl CAMPAIGN=<name>): Logo, Pflicht-Hashtags, Pflicht-Spiel.
 
-Beispiel config/campaign.json:
+Beispiel config/campaigns/<name>.json (Auswahl mit CAMPAIGN=<name>):
   {"active": true, "name": "GTA VI Logo", "logo": "config/campaign/logo.png",
    "logo_pos": "top-right", "logo_width": 0.22, "hashtags": "#clipup #gta6", "game": "Grand Theft Auto VI"}
 Ist "active" false oder fehlt die Datei, ändert sich nichts.
@@ -13,7 +13,11 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def load() -> dict:
-    p = Path(os.getenv("CAMPAIGN_FILE", ROOT / "config/campaign.json"))
+    """Kampagne über CAMPAIGN=<name> (config/campaigns/<name>.json) oder CAMPAIGN_FILE wählen.
+    Ohne Angabe ist keine Kampagne aktiv – so landet nie ein fremdes Logo im falschen Clip."""
+    name = os.getenv("CAMPAIGN", "").strip().lower()
+    default = ROOT / "config/campaigns" / f"{name}.json" if name else ROOT / "config/campaigns/_none.json"
+    p = Path(os.getenv("CAMPAIGN_FILE", default))
     try:
         data = json.loads(p.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -28,6 +32,15 @@ def logo_path() -> Path | None:
     p = Path(c["logo"])
     p = p if p.is_absolute() else ROOT / p
     return p if p.is_file() else None
+
+
+def title() -> str:
+    """Fester, sachlicher Titel (Kampagnen mit Verbot irreführender Titel)."""
+    return str(load().get("title", "")).strip()
+
+
+def channels() -> list[str]:
+    return [str(c).lower() for c in load().get("channels", [])]
 
 
 def hashtags() -> str:

@@ -21,6 +21,9 @@ def display_name(channel: str) -> str:
 
 
 def pick_hook(channel: str, seed: str, lang: str) -> str:
+    import campaign
+    if campaign.title():  # Kampagne verlangt sachlichen Titel (keine Übertreibung)
+        return campaign.title()
     custom = [h.strip() for h in os.getenv("HOOKS", "").split("|") if h.strip()]
     pool = custom or HOOKS.get(lang[:2], HOOKS["en"])
     return pool[zlib.crc32(seed.encode()) % len(pool)].format(s=display_name(channel))
