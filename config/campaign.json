@@ -1,0 +1,9 @@
+{
+  "active": false,
+  "name": "GTA VI – Logo-Kampagne (Content Rewards)",
+  "logo": "config/campaign/logo.png",
+  "logo_pos": "top-right",
+  "logo_width": 0.22,
+  "hashtags": "#clipup",
+  "game": "Grand Theft Auto VI"
+}

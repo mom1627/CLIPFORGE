@@ -243,6 +243,8 @@ def build_overlay_frames(words, hook: str, width: int, height: int, duration: fl
                 _draw_block(d, wrap(_esc(hook.upper()), 16), f_hook, width // 2, hook_y, hook_fill, max(4, hs // 10), 4)
             if sub:
                 _draw_block(d, sub, f_sub, width // 2, sub_y, (255, 255, 255, 255), max(3, fs // 12), 2)
+            import campaign
+            campaign.paste_logo(img, width, height)  # Kampagnen-Logo (falls aktiv) in jedes Bild
             path = outdir / f"o{len(cache):03d}.png"
             img.save(path, optimize=True)
             cache[key] = path
@@ -270,7 +272,8 @@ def add_captions(mp4: Path, channel: str, seed: str = "", split: bool | None = N
         out = mp4.with_name(mp4.stem + "_cap.mp4")
         enc = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
                "-c:a", "copy", "-movflags", "+faststart", out.name]
-        if style != "box" and has_ass_filter():
+        import campaign
+        if style != "box" and has_ass_filter() and not campaign.logo_path():
             ass = mp4.with_suffix(".ass")
             ass.write_text(build_ass(words, hook, w, h, d, split=split), encoding="utf-8")
             cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", mp4.name, "-vf", f"ass={ass.name}"] + enc

@@ -106,6 +106,12 @@ def host_video(video: Path) -> str:
 def build_caption(channel: str, hook: str = "", tags: str | None = None) -> str:
     """Beschreibung mit Hook, Quelle (Streamer) und Hashtags; max. 2200 Zeichen (TikTok)."""
     tags = (tags if tags is not None else os.getenv("CAPTION_TAGS", DEFAULT_TAGS)).strip()
+    try:
+        import campaign  # Pflicht-Hashtags der aktiven Kampagne immer vorne
+        need = [t for t in campaign.hashtags().split() if t.lower() not in tags.lower().split()]
+        tags = " ".join(need + tags.split())
+    except ImportError:
+        pass
     chan_tag = "#" + re.sub(r"[^a-z0-9_]", "", channel.lower()) if channel else ""
     if chan_tag and chan_tag not in tags.split():
         tags = f"{tags} {chan_tag}".strip()
