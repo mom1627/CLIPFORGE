@@ -437,6 +437,13 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
         if run.returncode:
             raise RuntimeError("FFmpeg Untertitel/Hook-Render: " + clean_error(run.stderr))
         verified = verify_mp4(output, width, height)
+        import campaign as _cmp
+        if _cmp.game() and os.getenv("GAMEPLAY_CHECK", "1") == "1":  # Pflicht-Spiel: echtes Gameplay im Bild?
+            import gameplay_check
+            ok, why = gameplay_check.check(output)
+            if not ok:
+                output.unlink(missing_ok=True)
+                raise RuntimeError("Gameplay-Prüfung: " + why)
         if os.getenv("NSFW_CHECK", "1") == "1":
             import safety
             safe, why = safety.check(output)
