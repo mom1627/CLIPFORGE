@@ -367,9 +367,26 @@ def verify_mp4(video: Path, width: int, height: int) -> dict:
     return result
 
 
+def clip_filename(candidate: Candidate, vod: dict) -> str:
+    dt = utc_time(vod["created_at"]) + timedelta(seconds=candidate.start_s)
+    return f"{candidate.channel}_{dt:%Y%m%d}_{dt:%H%M%S}.mp4"
+
+
+def existing_clip_names() -> set[str]:
+    names = set()
+    hidden = ROOT / "docs/hidden.json"
+    if hidden.exists():
+        names |= set(json.loads(hidden.read_text(encoding="utf-8")))
+    if os.getenv("GITHUB_REPOSITORY") and os.getenv("GH_TOKEN"):
+        r = cmd(["gh", "api", f"repos/{os.environ['GITHUB_REPOSITORY']}/releases/tags/{RELEASE}", "--jq", ".assets[].name"],
+                timeout=60, check=False)
+        names |= set(r.stdout.split())
+    return names
+
+
 def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
     dt = utc_time(vod["created_at"]) + timedelta(seconds=candidate.start_s)
-    filename = f"{candidate.channel}_{dt:%Y%m%d}_{dt:%H%M%S}.mp4"
+    filename = clip_filename(candidate, vod)
     output = OUT / filename
     with tempfile.TemporaryDirectory(prefix="vod_render_") as td:
         tmp = Path(td)
@@ -441,6 +458,7 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
         if _cmp.game() and os.getenv("GAMEPLAY_CHECK", "1") == "1":  # Pflicht-Spiel: echtes Gameplay im Bild?
             import gameplay_check
             ok, why = gameplay_check.check(output)
+            print("GAMEPLAY", filename, ok, why, flush=True)
             if not ok:
                 output.unlink(missing_ok=True)
                 raise RuntimeError("Gameplay-Prüfung: " + why)
@@ -584,6 +602,9 @@ def main() -> int:
                         chapters[c.vod_id] = chat_probe.game_chapters(c.vod_id, v["duration"])
                         report["warnings"].append(f"Kapitel {c.vod_id}: {chapters[c.vod_id]}")
                     ok = chat_probe.in_game(chapters[c.vod_id], c.peak_s, need_game)
+                    if ok is None:  # keine Kapitel: nur wenn der VOD-Titel das Spiel nennt, sonst unklar -> weg
+                        title = (v.get("title") or "").lower()
+                        ok = chapters[c.vod_id] == [] and ("gta" in title or need_game.lower() in title)
                     if ok is False:
                         report["skip_reasons"].append({"vod": v["url"], "offset": c.start_s,
                                                        "reason": f"nicht {need_game} an dieser Stelle"})
@@ -592,6 +613,8 @@ def main() -> int:
                 candidates = kept
             skip_start = bounded_int("VOD_SKIP_START", 900, 0, 7200)  # Stream-Anfang (Einrichtung, Dashboard) auslassen
             candidates = [c for c in candidates if c.start_s >= skip_start]
+            existing = existing_clip_names()  # schon vorhandene/ausgeblendete Clips nicht erneut schneiden
+            candidates = [c for c in candidates if clip_filename(c, by_id[c.vod_id]) not in existing]
             selected = top_candidates(candidates, max_clips, min_gap=gap,
                                       per_vod=bounded_int("PER_VOD", 2, 1, 12))
             report["candidate_count"] = len(candidates)
