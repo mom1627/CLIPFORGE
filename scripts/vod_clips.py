@@ -449,6 +449,7 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
                 "vod_offset_seconds": candidate.start_s,
                 "vod_timestamp": dt.isoformat(),
                 "hook": hook, "spoken_language": language,
+                "campaign": os.getenv("CAMPAIGN", "").strip().lower(),
                 "score": candidate.score,
                 "audio_peak_db": candidate.audio_peak_db,
                 "chat_boost": candidate.chat_boost,
@@ -563,6 +564,25 @@ def main() -> int:
                 candidates.extend(candidates_for_vod(vod, tmp, scan_count,
                             scan_seconds, float(os.getenv("SPIKE_DB", "6")),
                             chat, report["windows"]))
+            import campaign as _camp
+            need_game = _camp.game()
+            if need_game:  # Kampagne verlangt ein Spiel: nur Momente im passenden Twitch-Kapitel
+                kept = []
+                chapters = {}
+                for c in candidates:
+                    v = by_id[c.vod_id]
+                    if not v["url"].startswith("https://www.twitch.tv"):
+                        kept.append(c); continue
+                    if c.vod_id not in chapters:
+                        chapters[c.vod_id] = chat_probe.game_chapters(c.vod_id, v["duration"])
+                        report["warnings"].append(f"Kapitel {c.vod_id}: {chapters[c.vod_id]}")
+                    ok = chat_probe.in_game(chapters[c.vod_id], c.peak_s, need_game)
+                    if ok is False:
+                        report["skip_reasons"].append({"vod": v["url"], "offset": c.start_s,
+                                                       "reason": f"nicht {need_game} an dieser Stelle"})
+                        continue
+                    kept.append(c)
+                candidates = kept
             skip_start = bounded_int("VOD_SKIP_START", 900, 0, 7200)  # Stream-Anfang (Einrichtung, Dashboard) auslassen
             candidates = [c for c in candidates if c.start_s >= skip_start]
             selected = top_candidates(candidates, max_clips, min_gap=gap,
