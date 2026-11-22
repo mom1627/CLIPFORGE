@@ -6,5 +6,19 @@
   "logo_pos": "bottom-right",
   "logo_width": 0.5,
   "hashtags": "#gta6 #Clipup",
-  "game": "Grand Theft Auto VI"
+  "game": "Grand Theft Auto VI",
+  "channels": [
+    "kaicenat",
+    "xqc",
+    "jynxzi",
+    "caseoh_",
+    "hasanabi",
+    "ohnepixel",
+    "summit1g",
+    "shroud",
+    "stableronaldo"
+  ],
+  "exclude": [
+    "lacy"
+  ]
 }

@@ -171,7 +171,7 @@ def main() -> int:
         allowed = [campaign.game().lower()]
     import campaign
     camp = campaign.channels()  # Kampagnen-Creator zuerst (bei Kampagne mit festen Creatorn nur diese)
-    channels = camp or lc.channels()
+    channels = [c for c in (camp or lc.channels()) if c not in campaign.excluded()]
     report = {"started": datetime.now(timezone.utc).isoformat(), "sessions": [], "clips": []}
     clips = 0
     while time.time() < budget and clips < max_clips:

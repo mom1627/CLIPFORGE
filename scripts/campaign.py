@@ -43,6 +43,11 @@ def channels() -> list[str]:
     return [str(c).lower() for c in load().get("channels", [])]
 
 
+def excluded() -> list[str]:
+    """Creator, die in dieser Kampagne NICHT vorkommen dürfen (z. B. Lacy hat eigene Kampagne)."""
+    return [str(c).lower() for c in load().get("exclude", [])]
+
+
 def hashtags() -> str:
     return str(load().get("hashtags", "")).strip()
 
