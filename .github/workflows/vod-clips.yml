@@ -18,6 +18,11 @@ on:
         required: true
         default: "7"
         type: string
+      redo_files:
+        description: "Vorhandene Clips neu schneiden (Dateinamen, kommagetrennt)"
+        required: false
+        default: ""
+        type: string
       vod_url:
         description: "Direkter Link zur Aufzeichnung (z. B. YouTube); leer = Twitch-VODs der Streamer"
         required: false
@@ -60,6 +65,7 @@ jobs:
       CAPTION_STYLE: box
       CAMPAIGN: ${{ inputs.campaign || '' }}
       VOD_URL: ${{ inputs.vod_url || '' }}
+      REDO_FILES: ${{ inputs.redo_files || '' }}
       PER_VOD: ${{ inputs.max_clips || '7' }}
       VOD_SKIP_START: "900"
       DEBUG_FRAMES: "1"

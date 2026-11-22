@@ -97,7 +97,10 @@ def main() -> int:
         index = {c["file"]: c for c in json.loads(INDEX.read_text(encoding="utf-8")).get("clips", [])}
     if len(sys.argv) > 2 and sys.argv[1] == "--merge":  # eigene Einträge (z. B. nach Push-Konflikt) übernehmen
         for c in json.loads(Path(sys.argv[2]).read_text(encoding="utf-8")).get("clips", []):
-            index[c["file"]] = {**index.get(c["file"], {}), **{k: v for k, v in c.items() if v not in ("", None)}}
+            old = dict(index.get(c["file"], {}))
+            if c.get("asset_updated") and c.get("asset_updated") != old.get("asset_updated"):
+                old.pop("preview", None)  # neu geschnittene Datei: alte Vorschau verwerfen
+            index[c["file"]] = {**old, **{k: v for k, v in c.items() if v not in ("", None)}}
     assets = {a["name"]: a for a in release_assets() if a["name"].endswith(".mp4")}
     camp = os.getenv("CAMPAIGN", "").strip().lower()
     rows = []
@@ -113,6 +116,11 @@ def main() -> int:
                            "added": a.get("created_at", ""), "url": a["browser_download_url"], "bytes": a["size"]}
         else:
             index[name].setdefault("url", a["browser_download_url"])
+        e = index[name]
+        if e.get("asset_updated") and e["asset_updated"] != a.get("updated_at"):
+            e.pop("preview", None)  # Datei wurde neu geschnitten -> neue Vorschau
+        e["asset_updated"] = a.get("updated_at", "")
+        e["bytes"] = a["size"]
     index = {k: v for k, v in index.items() if k in assets or not assets}  # gelöschte Assets entfernen
     hidden_file = ROOT / "docs/hidden.json"  # nicht zum Hochladen geeignet (Nacktheit, 50 s, kaputte Facecam …)
     hidden = set(json.loads(hidden_file.read_text(encoding="utf-8"))) if hidden_file.exists() else set()
