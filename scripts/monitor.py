@@ -139,7 +139,12 @@ def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, ch
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     dest = dest_dir / f"clipforge_{channel}_{stamp}.mp4"
     cams = json.loads(Path(__file__).resolve().parent.parent.joinpath('config/cams.json').read_text())
-    box = cam_box or cams.get(channel, cams['default'])
+    box = cam_box or cams.get(channel)
+    if box is None:  # unbekannter Streamer: Facecam automatisch suchen
+        import facecam
+        box = facecam.find(joined, float(off), length)
+        print("FACECAM", channel, box, flush=True)
+    box = box or cams['default']
     lc.render_vertical(joined, dest, float(off), length, off + length + 5, cam_box=box, fit=fit)
     joined.unlink(missing_ok=True)
     return dest
