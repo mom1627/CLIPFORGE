@@ -25,7 +25,7 @@ class AllowlistTests(unittest.TestCase):
             self.assertEqual(vc.allowed_channels(""), ["xqc", "papaplatte"])
 
     def test_missing_approved_channels_fails_closed(self):
-        with patch.dict(os.environ, {"APPROVED_CHANNELS": ""}):
+        with patch.dict(os.environ, {"APPROVED_CHANNELS": "", "CAMPAIGN": ""}):
             with self.assertRaises(RuntimeError):
                 vc.allowed_channels("xqc")
 
