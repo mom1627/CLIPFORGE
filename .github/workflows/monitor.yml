@@ -83,6 +83,17 @@ jobs:
       - name: Beste Clips posten (Rest am Ende des Laufs)
         if: ${{ !cancelled() }}
         run: python -u scripts/post_best.py
+      - name: Handy-App aktualisieren (docs/clips.json)
+        if: ${{ !cancelled() }}
+        run: |
+          python scripts/update_index.py
+          git config user.name "clipforge-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/clips.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Clip-Übersicht aktualisiert [skip ci]"
+          for i in 1 2 3 4; do git pull --rebase -q origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}" && exit 0; sleep $((i*5)); done
+          exit 1
       - name: MP4-Prüfung
         if: always()
         run: |
