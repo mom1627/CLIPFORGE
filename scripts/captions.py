@@ -12,7 +12,7 @@ HOOKS = {
 DISPLAY = {  # Twitch-Login -> Name, den Zuschauer kennen
     "montanablack88": "Monte", "kaicenat": "Kai Cenat", "xqc": "xQc", "trymacs": "Trymacs",
     "papaplatte": "Papaplatte", "eliasn97": "Eli", "knossi": "Knossi", "revedtv": "Reved",
-    "jynxzi": "Jynxzi", "lacy": "Lacy", "caseoh_": "CaseOh", "ohnepixel": "ohnePixel", "hasanabi": "Hasan",
+    "jynxzi": "Jynxzi", "lacy": "Lacy", "stableronaldo": "StableRonaldo", "summit1g": "summit1g", "dylanpage": "Dylan Page", "caseoh_": "CaseOh", "ohnepixel": "ohnePixel", "hasanabi": "Hasan",
 }
 
 
