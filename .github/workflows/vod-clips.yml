@@ -33,11 +33,6 @@ on:
         required: false
         default: "GTA"
         type: string
-  # Run ONCE when this workflow file is updated, in addition to manual dispatch.
-  # No scheduled video recording or permanent GitHub runner.
-  push:
-    paths:
-      - ".github/workflows/vod-clips.yml"
 
 permissions:
   contents: write
