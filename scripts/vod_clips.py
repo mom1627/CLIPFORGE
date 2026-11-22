@@ -405,8 +405,14 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
         os.environ["GAMEPLAY_ASPECT"] = "" if c.get("focus") == "creator" else "4:5"
         if c.get("language"):
             os.environ["CAPTION_LANG"] = c["language"]
-        os.environ["CAM_BOX"] = ",".join(str(x) for x in cams.get(
-            candidate.channel, cams["default"]))
+        box = cams.get(candidate.channel)  # von Hand eingetragen hat Vorrang
+        if box is None:
+            import facecam
+            box = facecam.find(source, offset, 60)
+            print("FACECAM", filename, box, flush=True)
+            if box is None and c.get("need_facecam"):
+                raise RuntimeError("Keine Facecam des Streamers gefunden (Kampagne verlangt Webcam)")
+        os.environ["CAM_BOX"] = ",".join(str(x) for x in (box or cams["default"]))
         os.environ["VIDEO_WIDTH"] = str(bounded_int("VIDEO_WIDTH", 720, 720, 1080))
         if os.getenv("DEBUG_FRAMES") == "1":  # Vollbild (16:9) für die Facecam-Position
             frames = OUT / "frames"

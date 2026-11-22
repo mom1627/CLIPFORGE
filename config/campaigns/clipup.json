@@ -20,5 +20,6 @@
   ],
   "exclude": [
     "lacy"
-  ]
+  ],
+  "need_facecam": true
 }
