@@ -33,11 +33,6 @@ on:
         required: false
         default: "GTA"
         type: string
-  # Run ONCE when this workflow file is updated, in addition to manual dispatch.
-  # No scheduled video recording or permanent GitHub runner.
-  push:
-    paths:
-      - ".github/workflows/vod-clips.yml"
 
 permissions:
   contents: write
@@ -76,6 +71,8 @@ jobs:
       TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
       GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: clips
+      CLOUDINARY_CLOUD_NAME: ${{ vars.CLOUDINARY_CLOUD_NAME }}
+      CLOUDINARY_UPLOAD_PRESET: ${{ vars.CLOUDINARY_UPLOAD_PRESET }}
       CLIPFORGE_OUTPUT: output
     steps:
       - uses: actions/checkout@v4

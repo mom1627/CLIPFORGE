@@ -52,6 +52,45 @@ def merge(index: dict, rows: list[dict], assets: dict, camp_name: str) -> None:
         index[f] = e
 
 
+def make_preview(src: Path, dest: Path) -> bool:
+    """Kleine Abspiel-Version (540p) fürs Handy; die volle 1080p-Datei bleibt zum Herunterladen."""
+    r = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(src),
+                        "-vf", "scale=540:-2", "-c:v", "libx264", "-preset", "veryfast", "-crf", "27",
+                        "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", str(dest)],
+                       capture_output=True, timeout=300)
+    return r.returncode == 0 and dest.exists() and dest.stat().st_size > 10_000
+
+
+def ensure_previews(index: dict, limit: int) -> None:
+    """Clips ohne Vorschau: (lokal oder aus dem Release) verkleinern und zu Cloudinary hochladen.
+    GitHub liefert Release-Dateien als Download aus – Safari (iPhone) spielt sie nicht im Player ab."""
+    import tempfile
+    if not (os.getenv("CLOUDINARY_CLOUD_NAME") and os.getenv("CLOUDINARY_UPLOAD_PRESET")):
+        print("Vorschau übersprungen: Cloudinary nicht eingerichtet")
+        return
+    todo = [c for c in sorted(index.values(), key=lambda c: c.get("added", ""), reverse=True) if not c.get("preview")][:limit]
+    with tempfile.TemporaryDirectory(prefix="prev_") as td:
+        for c in todo:
+            src = OUT / c["file"]
+            if not src.exists():
+                dl = subprocess.run(["gh", "release", "download", TAG, "-R", REPO, "-p", c["file"], "-D", td, "--clobber"],
+                                    capture_output=True, timeout=300)
+                src = Path(td) / c["file"]
+                if dl.returncode or not src.exists():
+                    continue
+            prev = Path(td) / ("prev_" + c["file"])
+            try:
+                if make_preview(src, prev):
+                    c["preview"] = publisher.host_video(prev)
+                    print("Vorschau:", c["file"])
+            except (publisher.PublishError, OSError, subprocess.TimeoutExpired) as exc:
+                print("Vorschau fehlgeschlagen:", c["file"], exc)
+            finally:
+                prev.unlink(missing_ok=True)
+                if src.parent == Path(td):
+                    src.unlink(missing_ok=True)
+
+
 def main() -> int:
     index = {}
     if INDEX.exists():
@@ -75,6 +114,7 @@ def main() -> int:
     hidden_file = ROOT / "docs/hidden.json"  # nicht zum Hochladen geeignet (Nacktheit, 50 s, kaputte Facecam …)
     hidden = set(json.loads(hidden_file.read_text(encoding="utf-8"))) if hidden_file.exists() else set()
     index = {k: v for k, v in index.items() if k not in hidden}
+    ensure_previews(index, int(os.getenv("PREVIEW_MAX", "25")))
     INDEX.parent.mkdir(parents=True, exist_ok=True)
     INDEX.write_text(json.dumps({"updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                                  "repo": REPO, "clips": sorted(index.values(), key=lambda c: c.get("added", ""),

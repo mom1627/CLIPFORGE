@@ -112,7 +112,7 @@ function render() {
     const card = document.createElement("article"); card.className = "card";
     const camp = campOf(c);
     card.innerHTML = `
-      <video controls playsinline preload="metadata" src="${c.url}#t=0.5"></video>
+      <video controls playsinline preload="metadata" src="${(c.preview || c.url)}#t=0.5"></video>
       <div class="body">
         <div class="row"><span class="name"></span>${camp ? `<span class="badge camp">${LABEL[camp] || camp}</span>` : ""}</div>
         <div class="meta">${fmtDate(c.added)} · ${mb(c.bytes)}${c.score ? " · Punkte " + Number(c.score).toFixed(1) : ""}</div>
