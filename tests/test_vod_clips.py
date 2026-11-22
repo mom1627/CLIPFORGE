@@ -141,5 +141,13 @@ class LayoutAndVerificationTests(unittest.TestCase):
         self.assertEqual(info["frames"],1800)
 
 
+class HeatmapTest(unittest.TestCase):
+    def test_peaks_sorted_gap_and_skip_start(self):
+        hm = [{"start_time": t, "end_time": t + 10, "value": v} for t, v in
+              [(100, 1.0), (2000, 0.9), (2050, 0.95), (5000, 0.7), (8000, 0.2)]]
+        peaks = vc.heatmap_peaks(hm, 9000, 3, min_gap=120, skip_start=900)
+        self.assertEqual([p[0] for p in peaks], [2055, 5005, 8005])  # 100 zu früh, 2005 zu nah an 2055
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,10 @@
+{
+  "active": true,
+  "name": "ClipUp GTA VI Logo-Kampagne (Content Rewards, $0.30/1000 Tier-1-Views)",
+  "rules": "https://docs.google.com/document/d/1GeUEJhQ8HRnExpB7hiz527q5b_1qkZKVN39dUfnAtGw",
+  "logo": "config/campaign/logo.png",
+  "logo_pos": "bottom-right",
+  "logo_width": 0.5,
+  "hashtags": "#gta6 #Clipup",
+  "game": "Grand Theft Auto VI"
+}

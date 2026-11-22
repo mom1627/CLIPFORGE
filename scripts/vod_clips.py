@@ -66,9 +66,17 @@ def cmd(args: list[str], *, timeout: int = 180, check: bool = True) -> subproces
 
 
 def allowed_channels(requested: str) -> list[str]:
-    approved = lc.channels()
+    import campaign
+    camp = campaign.channels()  # Kampagnen-Creator sind durch die Kampagne freigegeben
+    try:
+        approved = lc.channels()
+    except RuntimeError:
+        if not camp:
+            raise
+        approved = []
+    approved = camp + [c for c in approved if c not in camp]
     if not requested.strip():
-        return approved
+        return camp or approved
     names = []
     for raw in requested.split(","):
         name = raw.strip().lower().lstrip("@")
@@ -172,7 +180,7 @@ def vod_section(vod: dict, begin: int, end: int, folder: Path,
                 label: str, high_quality: bool = False) -> Path:
     if begin < 0 or end <= begin:
         raise ValueError("Ungueltiger VOD-Zeitbereich")
-    fmt = "best[height<=720]/best" if high_quality else "worst[height<=480]/worst"
+    fmt = "bv*[height<=1080]+ba/b[height<=1080]/b" if high_quality else "worst[height<=480]/worst"
     prefix = folder / label
     args = ["yt-dlp", "--no-playlist", "--ignore-config", "--no-progress",
             "--no-warnings", "--retries", "1", "--fragment-retries", "1",
@@ -197,6 +205,36 @@ def score_event(db_levels: list[float], end: int, window: int = 8) -> float:
     peak = statistics.mean(db_levels[end-window:end])
     baseline = statistics.median(prior)
     return round(peak - baseline, 2)
+
+
+def url_vod(url: str, channel: str) -> dict:
+    """Beliebige VOD-URL (z. B. YouTube-Livestream-Aufzeichnung) per yt-dlp-Metadaten."""
+    info = json.loads(cmd(["yt-dlp", "--no-playlist", "--ignore-config", "--no-warnings",
+                           "--skip-download", "-J", url], timeout=180).stdout)
+    if info.get("is_live"):
+        raise RuntimeError("Stream läuft noch live – Clips erst aus der fertigen Aufzeichnung")
+    ts = info.get("release_timestamp") or info.get("timestamp") or time.time()
+    return {"id": str(info.get("id") or "vod"), "url": info.get("webpage_url") or url,
+            "duration": int(info.get("duration") or 0), "title": info.get("title") or "",
+            "channel": channel or (info.get("channel") or "creator").lower(),
+            "created_at": datetime.fromtimestamp(ts, timezone.utc).isoformat(),
+            "heatmap": info.get("heatmap") or []}
+
+
+def heatmap_peaks(heatmap: list[dict], duration: int, count: int, min_gap: int = 120,
+                  skip_start: int = 900) -> list[tuple[int, float]]:
+    """YouTube „Meistgesehen“: die stärksten Stellen (Sekunde, Wert), mit Mindestabstand."""
+    rows = sorted(((int((h["start_time"] + h["end_time"]) / 2), float(h.get("value", 0)))
+                   for h in heatmap if h.get("end_time") is not None), key=lambda r: -r[1])
+    out = []
+    for at, val in rows:
+        if at < skip_start or at > duration - 30:
+            continue
+        if all(abs(at - o) >= min_gap for o, _ in out):
+            out.append((at, val))
+        if len(out) >= count:
+            break
+    return out
 
 
 def chat_offsets(path: Path) -> list[float]:
@@ -344,10 +382,20 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
         if duration - offset < 59.5:
             raise RuntimeError(f"VOD-Teilstueck zu kurz ({duration-offset:.2f}s); kein verkuerztes Video")
         os.environ["VIDEO_FIT"] = "split"
-        os.environ["GAMEPLAY_ASPECT"] = "4:5"
+        import campaign
+        c = campaign.load()
+        # Kampagnen mit "Creator muss im Fokus sein": größere Facecam (40 % statt 30 % der Höhe)
+        os.environ["GAMEPLAY_ASPECT"] = "" if c.get("focus") == "creator" else "4:5"
+        if c.get("language"):
+            os.environ["CAPTION_LANG"] = c["language"]
         os.environ["CAM_BOX"] = ",".join(str(x) for x in cams.get(
             candidate.channel, cams["default"]))
         os.environ["VIDEO_WIDTH"] = str(bounded_int("VIDEO_WIDTH", 720, 720, 1080))
+        if os.getenv("DEBUG_FRAMES") == "1":  # Vollbild (16:9) für die Facecam-Position
+            frames = OUT / "frames"
+            frames.mkdir(parents=True, exist_ok=True)
+            subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-ss", str(offset + 5), "-i", str(source),
+                            "-frames:v", "1", str(frames / (filename[:-4] + "_full.jpg"))], timeout=60)
         prelim = tmp / "layout.mp4"
         lc.render_vertical(source, prelim, offset, 60, duration)
         words, language = captions.transcribe(prelim)
@@ -358,24 +406,43 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
         height = int(round(width * 16 / 9)) // 2 * 2
         seam = height - (width * 5 // 4 // 2 * 2)
         subtitle_y = min(height - 220, seam + max(100, int(height * 0.16)))
-        ass = captions.build_ass(words, hook, width, height, 60, split=True,
-                                 hook_y_override=seam, subtitle_y_override=subtitle_y)
-        (tmp / "captions.ass").write_text(ass, encoding="utf-8")
-        # Mastering fixes exactly 1800 video frames at 30fps and 60s of audio.
-        # Run in temp dir so the ASS filter has an unambiguous local filename.
-        subprocess_cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-             "-i", str(Path(prelim).resolve()), "-vf",
-             "ass=captions.ass,tpad=stop_mode=clone:stop_duration=1,fps=30",
-             "-af", "apad,atrim=duration=60,asetpts=N/SR/TB",
-             "-frames:v", "1800", "-t", "60",
-             "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
-             "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
-             "-movflags", "+faststart", str(Path(output).resolve())]
+        master = ["-af", "apad,atrim=duration=60,asetpts=N/SR/TB",
+                  "-frames:v", "1800", "-t", "60",
+                  "-c:v", "libx264", "-preset", "fast", "-crf", os.getenv("CRF", "19"),
+                  "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
+                  "-movflags", "+faststart", str(Path(output).resolve())]
+        if os.getenv("CAPTION_STYLE", "box") == "box":
+            # Weißer Titel-Kasten + roter Zitat-Kasten (echtes Zitat) an der Naht, wie Live-Clips
+            title = captions.pick_hook(candidate.channel, filename, language)
+            quote = captions.pick_quote(words, around=float(os.getenv("HIGHLIGHT_AT", "30")))
+            lst = captions.build_overlay_frames(words, title, width, height, 60.0, tmp / "ov",
+                                                split=True, quote=quote, style="box")
+            hook = title + (" | " + quote if quote else "")
+            subprocess_cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+                 "-i", str(Path(prelim).resolve()),
+                 "-f", "concat", "-safe", "0", "-i", str(lst.resolve()),
+                 "-filter_complex", "[0:v]tpad=stop_mode=clone:stop_duration=1,fps=30[b];"
+                                    "[b][1:v]overlay=0:0:eof_action=repeat:format=auto[v]",
+                 "-map", "[v]", "-map", "0:a?"] + master
+        else:
+            ass = captions.build_ass(words, hook, width, height, 60, split=True,
+                                     hook_y_override=seam, subtitle_y_override=subtitle_y)
+            (tmp / "captions.ass").write_text(ass, encoding="utf-8")
+            # Run in temp dir so the ASS filter has an unambiguous local filename.
+            subprocess_cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+                 "-i", str(Path(prelim).resolve()), "-vf",
+                 "ass=captions.ass,tpad=stop_mode=clone:stop_duration=1,fps=30"] + master
         run = subprocess.run(subprocess_cmd, cwd=tmp, capture_output=True, text=True,
                              timeout=480)
         if run.returncode:
             raise RuntimeError("FFmpeg Untertitel/Hook-Render: " + clean_error(run.stderr))
         verified = verify_mp4(output, width, height)
+        if os.getenv("NSFW_CHECK", "1") == "1":
+            import safety
+            safe, why = safety.check(output)
+            if not safe:
+                output.unlink(missing_ok=True)
+                raise RuntimeError("Nacktheits-Filter: " + why)
         print("FFPROBE_OK", filename, json.dumps(verified), flush=True)
         return {"file": filename, "streamer": candidate.channel,
                 "vod_link": vod["url"], "vod_id": candidate.vod_id,
@@ -442,10 +509,13 @@ def main() -> int:
     try:
         channels = allowed_channels(os.getenv("VOD_STREAMERS", ""))
         report["channels"] = channels
-        token = helix_token()
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         vods = []
-        for channel in channels:
+        vod_urls = [u.strip() for u in os.getenv("VOD_URL", "").split(",") if u.strip()]
+        for u in vod_urls:  # direkte Links (YouTube usw.), Creator = erster freigegebener Kanal
+            vods.append(url_vod(u, channels[0] if channels else ""))
+        token = helix_token() if not vod_urls else ""
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+        for channel in ([] if vod_urls else channels):
             try:
                 recent = list_recent_vods(channel, token, cutoff, vod_count, title_filter)
                 if not recent:
@@ -467,11 +537,21 @@ def main() -> int:
                 if time.monotonic() - started > 30 * 60:
                     report["warnings"].append("Zeitbudget erreicht: weitere VODs ausgelassen")
                     break
+                if vod.get("heatmap"):  # YouTube: Meistgesehen-Spitzen als Highlights
+                    hp = heatmap_peaks(vod["heatmap"], vod["duration"], max(4, max_clips * 2), min_gap=gap,
+                                       skip_start=bounded_int("VOD_SKIP_START", 900, 0, 7200))
+                    report["warnings"].append(f"Meistgesehen-Spitzen fuer {vod['id']}: {len(hp)}")
+                    for at, val in hp:
+                        start = int(max(0, min(vod["duration"] - 60, at - 30)))
+                        candidates.append(Candidate(vod["channel"], vod["id"], start, at,
+                                          round(val * 10, 2), 0.0, 0.0, vod["title"]))
+                    if hp:
+                        continue
                 chat_path = Path(os.getenv("CHAT_REPLAY_JSON_DIR", "data/chat")) / (vod["id"] + ".json")
                 chat = chat_offsets(chat_path)
                 if not chat:
                     report["warnings"].append("Chat-Replay nicht verfuegbar fuer VOD " + vod["id"])
-                peaks = [] if chat else chat_probe.chat_peaks(vod["id"], vod["duration"], count=max(4, max_clips))
+                peaks = [] if chat or not vod["url"].startswith("https://www.twitch.tv") else chat_probe.chat_peaks(vod["id"], vod["duration"], count=max(4, max_clips * 2))
                 if peaks:  # schnell: Chat-Spitzen, nur kurze Ausschnitte laden
                     report["warnings"].append(f"Chat-Spitzen fuer VOD {vod['id']}: {len(peaks)}")
                     for off, ratio in peaks:
@@ -483,7 +563,10 @@ def main() -> int:
                 candidates.extend(candidates_for_vod(vod, tmp, scan_count,
                             scan_seconds, float(os.getenv("SPIKE_DB", "6")),
                             chat, report["windows"]))
-            selected = top_candidates(candidates, max_clips, min_gap=gap)
+            skip_start = bounded_int("VOD_SKIP_START", 900, 0, 7200)  # Stream-Anfang (Einrichtung, Dashboard) auslassen
+            candidates = [c for c in candidates if c.start_s >= skip_start]
+            selected = top_candidates(candidates, max_clips, min_gap=gap,
+                                      per_vod=bounded_int("PER_VOD", 2, 1, 12))
             report["candidate_count"] = len(candidates)
             report["selected_count"] = len(selected)
             for chosen in selected:

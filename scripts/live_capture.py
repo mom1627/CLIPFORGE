@@ -192,7 +192,7 @@ def render_vertical(source: Path, dest: Path, start: float, clip_seconds: int, d
            "-i", str(source), "-t", str(min(clip_seconds, duration - start)),
            "-filter_complex", filt, "-map", "[v]", "-map", "0:a?", "-af", "apad=pad_dur=2",
            "-r", "30", "-c:v", "libx264", "-preset", "veryfast",
-           "-crf", "25", "-pix_fmt", "yuv420p", "-c:a", "aac",
+           "-crf", os.getenv("LAYOUT_CRF", "18"), "-pix_fmt", "yuv420p", "-c:a", "aac",
            "-b:a", "128k", "-movflags", "+faststart", str(dest)]
     result = run(cmd, timeout=210, check=False)
     if result.returncode or not dest.exists() or dest.stat().st_size < 10_000:

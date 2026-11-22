@@ -12,7 +12,7 @@ HOOKS = {
 DISPLAY = {  # Twitch-Login -> Name, den Zuschauer kennen
     "montanablack88": "Monte", "kaicenat": "Kai Cenat", "xqc": "xQc", "trymacs": "Trymacs",
     "papaplatte": "Papaplatte", "eliasn97": "Eli", "knossi": "Knossi", "revedtv": "Reved",
-    "jynxzi": "Jynxzi", "caseoh_": "CaseOh", "ohnepixel": "ohnePixel", "hasanabi": "Hasan",
+    "jynxzi": "Jynxzi", "lacy": "Lacy", "caseoh_": "CaseOh", "ohnepixel": "ohnePixel", "hasanabi": "Hasan",
 }
 
 
@@ -21,6 +21,9 @@ def display_name(channel: str) -> str:
 
 
 def pick_hook(channel: str, seed: str, lang: str) -> str:
+    import campaign
+    if campaign.title():  # Kampagne verlangt sachlichen Titel (keine Übertreibung)
+        return campaign.title()
     custom = [h.strip() for h in os.getenv("HOOKS", "").split("|") if h.strip()]
     pool = custom or HOOKS.get(lang[:2], HOOKS["en"])
     return pool[zlib.crc32(seed.encode()) % len(pool)].format(s=display_name(channel))
@@ -212,6 +215,8 @@ def build_overlay_frames(words, hook: str, width: int, height: int, duration: fl
     style = style or os.getenv("CAPTION_STYLE", "box")
     fs, hs = round(width * 0.078), round(width * 0.092)
     sub_y = round(height * (0.80 if split else 0.735))
+    import campaign
+    sub_y = campaign.subtitle_y(height, sub_y)
     hook_y = round(height * (0.40 - 0.07) if split else height * 0.22)
     f_sub, f_hook = _font(fs), _font(hs)
     f_box, f_quote = _font(round(width * 0.074)), _font(round(width * 0.066))
@@ -243,6 +248,8 @@ def build_overlay_frames(words, hook: str, width: int, height: int, duration: fl
                 _draw_block(d, wrap(_esc(hook.upper()), 16), f_hook, width // 2, hook_y, hook_fill, max(4, hs // 10), 4)
             if sub:
                 _draw_block(d, sub, f_sub, width // 2, sub_y, (255, 255, 255, 255), max(3, fs // 12), 2)
+            import campaign
+            campaign.paste_logo(img, width, height)  # Kampagnen-Logo (falls aktiv) in jedes Bild
             path = outdir / f"o{len(cache):03d}.png"
             img.save(path, optimize=True)
             cache[key] = path
@@ -270,7 +277,8 @@ def add_captions(mp4: Path, channel: str, seed: str = "", split: bool | None = N
         out = mp4.with_name(mp4.stem + "_cap.mp4")
         enc = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
                "-c:a", "copy", "-movflags", "+faststart", out.name]
-        if style != "box" and has_ass_filter():
+        import campaign
+        if style != "box" and has_ass_filter() and not campaign.logo_path():
             ass = mp4.with_suffix(".ass")
             ass.write_text(build_ass(words, hook, w, h, d, split=split), encoding="utf-8")
             cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", mp4.name, "-vf", f"ass={ass.name}"] + enc

@@ -166,7 +166,12 @@ def main() -> int:
     pre, post = int(env_f("PRE_SECONDS", 38)), 0
     max_clips = int(env_f("MAX_CLIPS", 12))
     allowed = [g.strip().lower() for g in os.getenv("ALLOWED_GAMES", "*").split(",") if g.strip()]
-    channels = lc.channels()
+    import campaign
+    if campaign.game():  # aktive Kampagne verlangt ein bestimmtes Spiel (z. B. GTA VI)
+        allowed = [campaign.game().lower()]
+    import campaign
+    camp = campaign.channels()  # Kampagnen-Creator zuerst (bei Kampagne mit festen Creatorn nur diese)
+    channels = camp or lc.channels()
     report = {"started": datetime.now(timezone.utc).isoformat(), "sessions": [], "clips": []}
     clips = 0
     while time.time() < budget and clips < max_clips:

@@ -11,9 +11,15 @@ on:
       max_clips:
         description: "Maximale Anzahl Clips"
         default: "12"
+      campaign:
+        description: "Kampagne (z. B. clipup = Logo + #Clipup; dylanpage); leer = keine"
+        default: ""
+      post:
+        description: "Automatisch über Buffer posten (1 = ja, 0 = nein)"
+        default: "1"
       spike_db:
         description: "Lautstärke-Anstieg in dB für ein Highlight (kleiner = mehr Clips)"
-        default: "7"
+        default: "5.5"
   schedule:
     - cron: "10 */6 * * *"   # nur bei öffentlichem Repo (unbegrenzte Minuten), siehe if unten
 
@@ -31,12 +37,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 350
     env:
-      APPROVED_CHANNELS: ${{ inputs.channels || vars.APPROVED_CHANNELS || 'kaicenat,xqc,jynxzi,caseoh_,ohnepixel,hasanabi,montanablack88,trymacs,papaplatte,eliasn97,knossi,revedtv' }}
+      APPROVED_CHANNELS: ${{ inputs.channels || format('{0},{1}', vars.CAMPAIGN_CHANNELS || 'lacy', vars.APPROVED_CHANNELS || 'kaicenat,xqc,jynxzi,caseoh_,ohnepixel,hasanabi,montanablack88,trymacs,papaplatte,eliasn97,knossi,revedtv') }}
       ALLOWED_GAMES: ${{ vars.ALLOWED_GAMES || '*' }}
       TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
       TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
       MONITOR_MINUTES: ${{ inputs.minutes || '330' }}
-      SPIKE_DB: ${{ inputs.spike_db || '7' }}
+      SPIKE_DB: ${{ inputs.spike_db || '5.5' }}
       VIDEO_WIDTH: "720"
       GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: clips
@@ -46,12 +52,13 @@ jobs:
       BUFFER_CHANNEL_ID: ${{ vars.BUFFER_CHANNEL_ID }}
       CLOUDINARY_CLOUD_NAME: ${{ vars.CLOUDINARY_CLOUD_NAME }}
       CLOUDINARY_UPLOAD_PRESET: ${{ vars.CLOUDINARY_UPLOAD_PRESET }}
-      AUTO_PUBLISH: ${{ vars.AUTO_PUBLISH || secrets.AUTO_PUBLISH || '0' }}
+      AUTO_PUBLISH: ${{ inputs.post || vars.AUTO_PUBLISH || secrets.AUTO_PUBLISH || '0' }}
       MAX_POSTS: ${{ vars.MAX_POSTS || '5' }}
       POST_BEST: ${{ vars.POST_BEST || '5' }}
       POST_GAP_MINUTES: ${{ vars.POST_GAP_MINUTES || '60' }}
       POST_SLOTS: ${{ vars.POST_SLOTS || '10,12,16,18,20' }}
       POST_TZ: Europe/Berlin
+      CAMPAIGN: ${{ inputs.campaign || vars.CAMPAIGN || '' }}
       POST_MODE: ${{ vars.POST_MODE || 'now' }}
       CAPTION_TAGS: ${{ vars.CAPTION_TAGS }}
       WHISPER_MODEL: ${{ vars.WHISPER_MODEL || 'small' }}

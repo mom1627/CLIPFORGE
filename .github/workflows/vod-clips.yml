@@ -16,7 +16,17 @@ on:
       max_clips:
         description: "Maximal fertige Clips insgesamt (1–12)"
         required: true
-        default: "3"
+        default: "7"
+        type: string
+      vod_url:
+        description: "Direkter Link zur Aufzeichnung (z. B. YouTube); leer = Twitch-VODs der Streamer"
+        required: false
+        default: ""
+        type: string
+      campaign:
+        description: "Kampagne (config/campaigns/<name>.json), z. B. dylanpage, clipup; leer = keine"
+        required: false
+        default: ""
         type: string
       title_filter:
         description: "Optionaler Text im VOD-Titel (z. B. GTA); leer = alle"
@@ -42,17 +52,24 @@ jobs:
     timeout-minutes: 60
     env:
       # STRICT allowlist. Never replace this with user-supplied channels.
-      APPROVED_CHANNELS: ${{ vars.APPROVED_CHANNELS }}
-      VOD_STREAMERS: ${{ inputs.streamers || '' }}
-      VOD_HOURS: ${{ inputs.hours || '72' }}
-      MAX_CLIPS: ${{ inputs.max_clips || '3' }}
+      # CAMPAIGN_CHANNELS: Streamer offizieller Clipping-Kampagnen, denen der Nutzer beigetreten ist (z. B. lacy / Reach Clipping).
+      APPROVED_CHANNELS: ${{ vars.CAMPAIGN_CHANNELS || 'lacy' }},${{ vars.APPROVED_CHANNELS }}
+      VOD_STREAMERS: ${{ inputs.streamers || (github.event_name == 'push' && (vars.CAMPAIGN_CHANNELS || 'lacy')) || '' }}
+      VOD_HOURS: ${{ inputs.hours || '96' }}
+      MAX_CLIPS: ${{ inputs.max_clips || '7' }}
       TITLE_FILTER: ${{ inputs.title_filter || 'GTA' }}
       VODS_PER_STREAMER: "1"
       SCAN_WINDOWS: "2"
       SCAN_SECONDS: "240"
       MIN_GAP: "120"
+      CAPTION_STYLE: box
+      CAMPAIGN: ${{ inputs.campaign || '' }}
+      VOD_URL: ${{ inputs.vod_url || '' }}
+      PER_VOD: ${{ inputs.max_clips || '7' }}
+      VOD_SKIP_START: "900"
+      DEBUG_FRAMES: "1"
       SPIKE_DB: "6"
-      VIDEO_WIDTH: "720"
+      VIDEO_WIDTH: "1080"
       VIDEO_FIT: split
       WHISPER_MODEL: small
       TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
@@ -71,19 +88,25 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_vod_clips.py' -v
       - name: Voraussetzungen und Abgrenzung pruefen
         run: |
-          test -n "$APPROVED_CHANNELS" || { echo "::error::GitHub-Variable APPROVED_CHANNELS fehlt. Nur freigegebene Twitch-Kanaele duerfen verarbeitet werden."; exit 1; }
+          test -n "$APPROVED_CHANNELS" || test -n "$CAMPAIGN" || { echo "::error::GitHub-Variable APPROVED_CHANNELS fehlt. Nur freigegebene Twitch-Kanaele duerfen verarbeitet werden."; exit 1; }
           test -n "$TWITCH_CLIENT_ID" && test -n "$TWITCH_CLIENT_SECRET" || { echo "::error::Twitch-Helix-Secrets TWITCH_CLIENT_ID und TWITCH_CLIENT_SECRET fehlen."; exit 1; }
           echo "Nur oeffentliche VODs; keine Umgehung von Login, Abo oder geloeschten Videos."
       - name: FFmpeg, yt-dlp und faster-whisper installieren
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
-          python -m pip install --disable-pip-version-check --quiet "yt-dlp>=2026.10.0" "streamlink>=8,<9" "faster-whisper>=1.1,<2"
+          python -m pip install --disable-pip-version-check --quiet "yt-dlp>=2026.10.0" "streamlink>=8,<9" "faster-whisper>=1.1,<2" Pillow "nudenet>=3.4,<4"
       - name: Release clips pruefen oder erstellen
         run: |
           gh release view clips >/dev/null 2>&1 || gh release create clips --title "CLIPFORGE Clips" --notes "Verifizierte Clip-Exporte" --latest=false
       - name: VODs pruefen, Highlights finden und MP4s verifizieren
         run: python -u scripts/vod_clips.py
+      - name: Vollbilder (Facecam-Position) hochladen
+        if: always()
+        run: |
+          ls output/frames/*.jpg >/dev/null 2>&1 || exit 0
+          gh release view debug >/dev/null 2>&1 || gh release create debug --title debug --notes "Standbilder" --latest=false
+          gh release upload debug output/frames/*.jpg --clobber
       - name: ffprobe-Nachweis und Bericht
         if: always()
         run: |
