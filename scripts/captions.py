@@ -212,6 +212,8 @@ def build_overlay_frames(words, hook: str, width: int, height: int, duration: fl
     style = style or os.getenv("CAPTION_STYLE", "box")
     fs, hs = round(width * 0.078), round(width * 0.092)
     sub_y = round(height * (0.80 if split else 0.735))
+    import campaign
+    sub_y = campaign.subtitle_y(height, sub_y)
     hook_y = round(height * (0.40 - 0.07) if split else height * 0.22)
     f_sub, f_hook = _font(fs), _font(hs)
     f_box, f_quote = _font(round(width * 0.074)), _font(round(width * 0.066))

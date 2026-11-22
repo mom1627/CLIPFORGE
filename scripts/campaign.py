@@ -38,6 +38,14 @@ def game() -> str:
     return str(load().get("game", "")).strip()
 
 
+def subtitle_y(height: int, default: int) -> int:
+    """Untertitel über das Logo schieben, damit es nie verdeckt wird (Kampagnen-Regel)."""
+    c = load()
+    if logo_path() and str(c.get("logo_pos", "")).startswith("bottom"):
+        return min(default, int(height * 0.66))
+    return default
+
+
 def paste_logo(img, width: int, height: int) -> None:
     """Logo (PNG mit Transparenz) auf ein RGBA-Overlay-Bild setzen."""
     p = logo_path()
@@ -51,5 +59,12 @@ def paste_logo(img, width: int, height: int) -> None:
     m = int(width * 0.03)
     pos = c.get("logo_pos", "top-right")
     x = {"top-left": m, "bottom-left": m, "center": (width - logo.width) // 2}.get(pos, width - logo.width - m)
-    y = m if pos.startswith("top") else (height - logo.height) // 2 if pos == "center" else int(height * 0.70) - logo.height
+    if pos.startswith("top"):
+        y = m
+    elif pos == "center":
+        y = (height - logo.height) // 2
+    else:  # unten bündig wie im Kampagnen-Beispiel
+        y = height - logo.height - int(height * 0.004)
+        if pos == "bottom-right":
+            x = width - logo.width - int(width * 0.01)
     img.alpha_composite(logo, (x, y))
