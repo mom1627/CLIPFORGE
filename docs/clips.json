@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-22T16:37:55+00:00",
+ "updated": "2026-11-22T17:09:20+00:00",
  "repo": "mom1627/CLIPFORGE",
  "clips": [
   {
@@ -11,7 +11,8 @@
    "source": "https://www.twitch.tv/videos/2936518555",
    "added": "2026-11-22T16:36:23Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/lacy_20261122_021430.mp4",
-   "bytes": 42554823
+   "bytes": 42554823,
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367201/ru0pkd1xovq9zyobpbxt.mp4"
   },
   {
    "file": "lacy_20261121_203612.mp4",
@@ -22,7 +23,8 @@
    "source": "https://www.twitch.tv/videos/2936518555",
    "added": "2026-11-22T16:36:20Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/lacy_20261121_203612.mp4",
-   "bytes": 47235548
+   "bytes": 47235548,
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367213/kjbg8brfrhavldpz2ge8.mp4"
   },
   {
    "file": "lacy_20261121_211317.mp4",
@@ -33,7 +35,8 @@
    "source": "https://www.twitch.tv/videos/2936518555",
    "added": "2026-11-22T00:20:31Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/lacy_20261121_211317.mp4",
-   "bytes": 33498579
+   "bytes": 33498579,
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367224/qv0njponbwzdjih2vzvb.mp4"
   },
   {
    "file": "lacy_20261121_215957.mp4",
@@ -44,7 +47,8 @@
    "source": "https://www.twitch.tv/videos/2936518555",
    "added": "2026-11-22T00:20:30Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/lacy_20261121_215957.mp4",
-   "bytes": 29414452
+   "bytes": 29414452,
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367234/wjpky8q8mh1xbz7bpee0.mp4"
   },
   {
    "file": "lacy_20261121_203707.mp4",
@@ -55,7 +59,8 @@
    "source": "https://www.twitch.tv/videos/2936518555",
    "added": "2026-11-22T00:20:26Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/lacy_20261121_203707.mp4",
-   "bytes": 35894344
+   "bytes": 35894344,
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367246/bmtucjtbc0ltgvfnlkvg.mp4"
   },
   {
    "file": "lacy_20261121_215147.mp4",
@@ -66,7 +71,8 @@
    "source": "https://www.twitch.tv/videos/2936518555",
    "added": "2026-11-22T00:20:24Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/lacy_20261121_215147.mp4",
-   "bytes": 31473384
+   "bytes": 31473384,
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367256/w8icblcfkelkbsbm5pjb.mp4"
   },
   {
    "file": "clipforge_jynxzi_20261121_222827.mp4",
@@ -77,7 +83,8 @@
    "source": "",
    "added": "2026-11-21T22:30:01Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_jynxzi_20261121_222827.mp4",
-   "bytes": 9494676
+   "bytes": 9494676,
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367265/icj6g8mn0hfhtuj6tkvr.mp4"
   },
   {
    "file": "clipforge_djmariio_20261121_212507.mp4",
@@ -88,7 +95,8 @@
    "source": "",
    "added": "2026-11-21T21:26:25Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_djmariio_20261121_212507.mp4",
-   "bytes": 12945488
+   "bytes": 12945488,
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367275/xxozqkti4prhgddta214.mp4"
   },
   {
    "file": "clipforge_djmariio_20261121_212312.mp4",
@@ -99,7 +107,8 @@
    "source": "",
    "added": "2026-11-21T21:24:30Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_djmariio_20261121_212312.mp4",
-   "bytes": 12842225
+   "bytes": 12842225,
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367285/dcivqfgyu57dap3l3njf.mp4"
   },
   {
    "file": "clipforge_ohnepixel_20261121_163441.mp4",
@@ -110,7 +119,8 @@
    "source": "",
    "added": "2026-11-21T16:35:50Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_ohnepixel_20261121_163441.mp4",
-   "bytes": 7970285
+   "bytes": 7970285,
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367293/shzhutb7pn1oirjsc9cd.mp4"
   },
   {
    "file": "clipforge_ohnepixel_20261121_163145.mp4",
@@ -121,7 +131,8 @@
    "source": "",
    "added": "2026-11-21T16:32:43Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_ohnepixel_20261121_163145.mp4",
-   "bytes": 5804107
+   "bytes": 5804107,
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367301/jqnyr30j0udreaosr2ao.mp4"
   },
   {
    "file": "djmariio_20261119_212617.mp4",
@@ -132,7 +143,8 @@
    "source": "https://www.twitch.tv/videos/2933723388",
    "added": "2026-11-20T00:54:35Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/djmariio_20261119_212617.mp4",
-   "bytes": 7948222
+   "bytes": 7948222,
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367308/wjaa4mvjmwlwjiav9qsf.mp4"
   },
   {
    "file": "djmariio_20261119_150023.mp4",
@@ -143,7 +155,8 @@
    "source": "https://www.twitch.tv/videos/2933723388",
    "added": "2026-11-20T00:54:31Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/djmariio_20261119_150023.mp4",
-   "bytes": 19473597
+   "bytes": 19473597,
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367320/nrpxjplroaiqzlxjh1w5.mp4"
   },
   {
    "file": "clipforge_trymacs_20261119_110700.mp4",
@@ -154,7 +167,8 @@
    "source": "",
    "added": "2026-11-19T11:08:24Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_trymacs_20261119_110700.mp4",
-   "bytes": 9899700
+   "bytes": 9899700,
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367329/vos5wlp3mvzxacqlt2iu.mp4"
   },
   {
    "file": "clipforge_trymacs_20261119_110231.mp4",
@@ -165,7 +179,8 @@
    "source": "",
    "added": "2026-11-19T11:04:11Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_trymacs_20261119_110231.mp4",
-   "bytes": 27001298
+   "bytes": 27001298,
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367340/zmw1dsckqh42kpvm61cs.mp4"
   },
   {
    "file": "clipforge_kaicenat_20261119_011752.mp4",
@@ -176,7 +191,8 @@
    "source": "",
    "added": "2026-11-19T01:19:19Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_kaicenat_20261119_011752.mp4",
-   "bytes": 8423720
+   "bytes": 8423720,
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367349/slt6ppqisewouihmgbxl.mp4"
   },
   {
    "file": "clipforge_kaicenat_20261119_010925.mp4",
@@ -187,7 +203,8 @@
    "source": "",
    "added": "2026-11-19T01:10:25Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_kaicenat_20261119_010925.mp4",
-   "bytes": 8766697
+   "bytes": 8766697,
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367359/h5lweuw8ollbhymfilbr.mp4"
   }
  ]
 }
