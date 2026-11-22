@@ -408,7 +408,7 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
         subtitle_y = min(height - 220, seam + max(100, int(height * 0.16)))
         master = ["-af", "apad,atrim=duration=60,asetpts=N/SR/TB",
                   "-frames:v", "1800", "-t", "60",
-                  "-c:v", "libx264", "-preset", "fast", "-crf", os.getenv("CRF", "19"),
+                  "-c:v", "libx264", "-preset", "medium", "-crf", os.getenv("CRF", "17"),
                   "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
                   "-movflags", "+faststart", str(Path(output).resolve())]
         if os.getenv("CAPTION_STYLE", "box") == "box":

@@ -275,7 +275,7 @@ def add_captions(mp4: Path, channel: str, seed: str = "", split: bool | None = N
         style = os.getenv("CAPTION_STYLE", "box")
         quote = pick_quote(words, around=float(os.getenv("HIGHLIGHT_AT", "42"))) if style == "box" else ""
         out = mp4.with_name(mp4.stem + "_cap.mp4")
-        enc = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
+        enc = ["-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p",
                "-c:a", "copy", "-movflags", "+faststart", out.name]
         import campaign
         if style != "box" and has_ass_filter() and not campaign.logo_path():
