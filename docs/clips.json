@@ -1,11 +1,76 @@
 {
- "updated": "2026-11-23T19:10:13+00:00",
+ "updated": "2026-11-23T19:28:32+00:00",
  "repo": "mom1627/CLIPFORGE",
  "clips": [
   {
+   "file": "hasanabi_20261122_232630.mp4",
+   "streamer": "hasanabi",
+   "score": 4.67,
+   "campaign": "clipup",
+   "caption": "What is Hasan doing ?!\n\n🎮 Streamer: Hasan (Twitch)\n\n#Clipup #gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral #hasanabi",
+   "source": "https://www.twitch.tv/videos/2937602356",
+   "added": "2026-11-23T19:27:21Z",
+   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/hasanabi_20261122_232630.mp4",
+   "bytes": 45385446,
+   "asset_updated": "2026-11-23T19:27:24Z",
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795462056/jti6whcnn6henf7vznvt.mp4"
+  },
+  {
+   "file": "xqc_20261123_025830.mp4",
+   "streamer": "xqc",
+   "score": 5.04,
+   "campaign": "clipup",
+   "caption": "What is xQc doing ?!\n\n🎮 Streamer: xQc (Twitch)\n\n#Clipup #gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral #xqc",
+   "source": "https://www.twitch.tv/videos/2937629817",
+   "added": "2026-11-23T19:27:17Z",
+   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/xqc_20261123_025830.mp4",
+   "bytes": 79517752,
+   "asset_updated": "2026-11-23T19:27:20Z",
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795462069/w5bu1natijvyr4vomwvp.mp4"
+  },
+  {
+   "file": "xqc_20261122_212316.mp4",
+   "streamer": "xqc",
+   "score": 5.04,
+   "campaign": "clipup",
+   "caption": "What is xQc doing ?!\n\n🎮 Streamer: xQc (Twitch)\n\n#Clipup #gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral #xqc",
+   "source": "https://www.twitch.tv/videos/2937629817",
+   "added": "2026-11-23T19:27:14Z",
+   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/xqc_20261122_212316.mp4",
+   "bytes": 50883306,
+   "asset_updated": "2026-11-23T19:27:16Z",
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795462080/zmogvq0xrplkxoyq3fnp.mp4"
+  },
+  {
+   "file": "xqc_20261123_053835.mp4",
+   "streamer": "xqc",
+   "score": 5.22,
+   "campaign": "clipup",
+   "caption": "Chat goes crazy on xQc ?!\n\n🎮 Streamer: xQc (Twitch)\n\n#Clipup #gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral #xqc",
+   "source": "https://www.twitch.tv/videos/2937629817",
+   "added": "2026-11-23T19:27:10Z",
+   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/xqc_20261123_053835.mp4",
+   "bytes": 51223773,
+   "asset_updated": "2026-11-23T19:27:13Z",
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795462090/grscpt7lmxinlioq5m38.mp4"
+  },
+  {
+   "file": "xqc_20261123_002557.mp4",
+   "streamer": "xqc",
+   "score": 5.22,
+   "campaign": "clipup",
+   "caption": "Chat goes crazy on xQc ?!\n\n🎮 Streamer: xQc (Twitch)\n\n#Clipup #gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral #xqc",
+   "source": "https://www.twitch.tv/videos/2937629817",
+   "added": "2026-11-23T19:27:07Z",
+   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/xqc_20261123_002557.mp4",
+   "bytes": 50672071,
+   "asset_updated": "2026-11-23T19:27:09Z",
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795462101/euadqmiwekkirh98wjla.mp4"
+  },
+  {
    "file": "lacy_20261122_225042.mp4",
    "streamer": "lacy",
-   "score": 10.12,
+   "score": 0,
    "campaign": "lacy",
    "caption": "Lacy's GTA 6 marathon moment 😂\n\n🎮 Streamer: Lacy (Twitch)\n\n#LACY #gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral",
    "source": "https://www.twitch.tv/videos/2937465519",
@@ -13,7 +78,7 @@
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/lacy_20261122_225042.mp4",
    "bytes": 28306106,
    "asset_updated": "2026-11-23T19:10:02Z",
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795461012/ntgjkb1q1oabh1lpin9e.mp4"
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795462110/pzxkoluc6cflvthnev10.mp4"
   },
   {
    "file": "stableronaldo_20261122_043529.mp4",
