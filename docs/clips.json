@@ -1,7 +1,20 @@
 {
- "updated": "2026-11-23T09:09:54+00:00",
+ "updated": "2026-11-23T19:10:13+00:00",
  "repo": "mom1627/CLIPFORGE",
  "clips": [
+  {
+   "file": "lacy_20261122_225042.mp4",
+   "streamer": "lacy",
+   "score": 10.12,
+   "campaign": "lacy",
+   "caption": "Lacy's GTA 6 marathon moment 😂\n\n🎮 Streamer: Lacy (Twitch)\n\n#LACY #gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral",
+   "source": "https://www.twitch.tv/videos/2937465519",
+   "added": "2026-11-23T19:10:01Z",
+   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/lacy_20261122_225042.mp4",
+   "bytes": 28306106,
+   "asset_updated": "2026-11-23T19:10:02Z",
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795461012/ntgjkb1q1oabh1lpin9e.mp4"
+  },
   {
    "file": "stableronaldo_20261122_043529.mp4",
    "streamer": "stableronaldo",
@@ -14,19 +27,6 @@
    "bytes": 36582282,
    "asset_updated": "2026-11-23T09:08:51Z",
    "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795424947/oyo3jgrj6s1wunchf86e.mp4"
-  },
-  {
-   "file": "summit1g_20261122_000815.mp4",
-   "streamer": "summit1g",
-   "score": 5.27,
-   "campaign": "clipup",
-   "caption": "summit1g completely loses it ?!\n\n🎮 Streamer: summit1g (Twitch)\n\n#Clipup #gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral #summit1g",
-   "source": "https://www.twitch.tv/videos/2936704351",
-   "added": "2026-11-23T09:08:47Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/summit1g_20261122_000815.mp4",
-   "bytes": 15039064,
-   "asset_updated": "2026-11-23T09:08:48Z",
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795424958/vzrmp4awtpi04j9zvhgn.mp4"
   },
   {
    "file": "stableronaldo_20261122_035835.mp4",
