@@ -2,6 +2,11 @@ name: CLIPFORGE – Handy-App aktualisieren (Vorschauen nachholen)
 on:
   workflow_dispatch:
     inputs:
+      delete_files:
+        description: "Bestimmte Clips löschen (Dateinamen, kommagetrennt)"
+        required: false
+        default: ""
+        type: string
       delete_before:
         description: "Clips löschen, die vor diesem Datum erstellt wurden (JJJJ-MM-TT); leer = nichts löschen"
         required: false
@@ -37,6 +42,15 @@ jobs:
           gh api "repos/${GITHUB_REPOSITORY}/releases/tags/clips" --jq ".assets[] | select(.name|endswith(\".mp4\")) | select(.created_at < \"${BEFORE}\") | .name" > old.txt
           echo "Lösche $(wc -l < old.txt) Clips:"; cat old.txt
           while read -r n; do gh release delete-asset clips "$n" -R "$GITHUB_REPOSITORY" -y; done < old.txt
+      - name: Bestimmte Clips löschen
+        if: ${{ inputs.delete_files != '' }}
+        env:
+          FILES: ${{ inputs.delete_files }}
+        run: |
+          for n in $(echo "$FILES" | tr ',' ' '); do
+            echo "$n" | grep -Eq '^[A-Za-z0-9_]+\.mp4$' || { echo "ungültig: $n"; continue; }
+            gh release delete-asset clips "$n" -R "$GITHUB_REPOSITORY" -y || true
+          done
       - name: Clip-Liste und Vorschauen aktualisieren
         run: |
           python scripts/update_index.py
