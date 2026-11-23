@@ -1,7 +1,18 @@
 {
- "updated": "2026-11-22T19:48:17+00:00",
+ "updated": "2026-11-23T00:04:44+00:00",
  "repo": "mom1627/CLIPFORGE",
  "clips": [
+  {
+   "file": "clipforge_xqc_20261122_232353.mp4",
+   "streamer": "xqc",
+   "score": 0,
+   "caption": "xqc rastet komplett aus 😭\n\n🎮 Streamer: xqc (Twitch)\n\n#gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral #xqc",
+   "added": "2026-11-22T23:25:08Z",
+   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_xqc_20261122_232353.mp4",
+   "bytes": 32705318,
+   "asset_updated": "2026-11-22T23:25:10Z",
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795392282/ozedhnmqrkapca0hlnjr.mp4"
+  },
   {
    "file": "stableronaldo_20261122_042717.mp4",
    "streamer": "stableronaldo",
@@ -12,7 +23,8 @@
    "added": "2026-11-22T19:44:50Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/stableronaldo_20261122_042717.mp4",
    "bytes": 29905258,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795376713/iwddeqdmfb48mslaupjd.mp4"
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795376713/iwddeqdmfb48mslaupjd.mp4",
+   "asset_updated": "2026-11-22T19:44:52Z"
   },
   {
    "file": "stableronaldo_20261121_212459.mp4",
@@ -24,7 +36,8 @@
    "added": "2026-11-22T19:44:47Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/stableronaldo_20261121_212459.mp4",
    "bytes": 50681440,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795376724/w0dm7nzhtvsoof31ch4d.mp4"
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795376724/w0dm7nzhtvsoof31ch4d.mp4",
+   "asset_updated": "2026-11-22T19:44:49Z"
   },
   {
    "file": "clipforge_lacy_20261122_193645.mp4",
@@ -34,7 +47,8 @@
    "added": "2026-11-22T19:37:51Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_lacy_20261122_193645.mp4",
    "bytes": 28382987,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795376734/bqurptxac91vqrw2rdcv.mp4"
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795376734/bqurptxac91vqrw2rdcv.mp4",
+   "asset_updated": "2026-11-22T19:37:52Z"
   },
   {
    "file": "clipforge_lacy_20261122_193348.mp4",
@@ -44,7 +58,8 @@
    "added": "2026-11-22T19:34:52Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_lacy_20261122_193348.mp4",
    "bytes": 26791383,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795376744/picccncyb3oadgejkjit.mp4"
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795376744/picccncyb3oadgejkjit.mp4",
+   "asset_updated": "2026-11-22T19:34:54Z"
   },
   {
    "file": "kaicenat_20261122_011603.mp4",
@@ -56,7 +71,8 @@
    "added": "2026-11-22T18:22:57Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/kaicenat_20261122_011603.mp4",
    "bytes": 53824221,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795371792/wuoikaaemaq5618voeud.mp4"
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795371792/wuoikaaemaq5618voeud.mp4",
+   "asset_updated": "2026-11-22T19:10:12Z"
   },
   {
    "file": "lacy_20261122_013722.mp4",
@@ -66,7 +82,8 @@
    "added": "2026-11-22T17:46:28Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/lacy_20261122_013722.mp4",
    "bytes": 25306908,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795371820/qh5p3tzycrdzse3ghpcd.mp4"
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795371820/qh5p3tzycrdzse3ghpcd.mp4",
+   "asset_updated": "2026-11-22T17:46:29Z"
   },
   {
    "file": "lacy_20261121_203642.mp4",
@@ -76,7 +93,8 @@
    "added": "2026-11-22T17:46:21Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/lacy_20261121_203642.mp4",
    "bytes": 45914573,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795371850/a4bfppn616kh5hxsh2ju.mp4"
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795371850/a4bfppn616kh5hxsh2ju.mp4",
+   "asset_updated": "2026-11-22T17:46:23Z"
   },
   {
    "file": "lacy_20261122_021430.mp4",
@@ -88,7 +106,8 @@
    "added": "2026-11-22T16:36:23Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/lacy_20261122_021430.mp4",
    "bytes": 42554823,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367201/ru0pkd1xovq9zyobpbxt.mp4"
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367201/ru0pkd1xovq9zyobpbxt.mp4",
+   "asset_updated": "2026-11-22T16:36:25Z"
   },
   {
    "file": "lacy_20261121_203612.mp4",
@@ -100,7 +119,8 @@
    "added": "2026-11-22T16:36:20Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/lacy_20261121_203612.mp4",
    "bytes": 47235548,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367213/kjbg8brfrhavldpz2ge8.mp4"
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367213/kjbg8brfrhavldpz2ge8.mp4",
+   "asset_updated": "2026-11-22T16:36:22Z"
   },
   {
    "file": "lacy_20261121_211317.mp4",
@@ -112,7 +132,8 @@
    "added": "2026-11-22T00:20:31Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/lacy_20261121_211317.mp4",
    "bytes": 33498579,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367224/qv0njponbwzdjih2vzvb.mp4"
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367224/qv0njponbwzdjih2vzvb.mp4",
+   "asset_updated": "2026-11-22T00:20:33Z"
   },
   {
    "file": "lacy_20261121_215957.mp4",
@@ -124,7 +145,8 @@
    "added": "2026-11-22T00:20:30Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/lacy_20261121_215957.mp4",
    "bytes": 29414452,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367234/wjpky8q8mh1xbz7bpee0.mp4"
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367234/wjpky8q8mh1xbz7bpee0.mp4",
+   "asset_updated": "2026-11-22T00:20:31Z"
   },
   {
    "file": "lacy_20261121_203707.mp4",
@@ -136,7 +158,8 @@
    "added": "2026-11-22T00:20:26Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/lacy_20261121_203707.mp4",
    "bytes": 35894344,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367246/bmtucjtbc0ltgvfnlkvg.mp4"
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367246/bmtucjtbc0ltgvfnlkvg.mp4",
+   "asset_updated": "2026-11-22T00:20:28Z"
   },
   {
    "file": "lacy_20261121_215147.mp4",
@@ -148,139 +171,8 @@
    "added": "2026-11-22T00:20:24Z",
    "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/lacy_20261121_215147.mp4",
    "bytes": 31473384,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367256/w8icblcfkelkbsbm5pjb.mp4"
-  },
-  {
-   "file": "clipforge_jynxzi_20261121_222827.mp4",
-   "streamer": "jynxzi",
-   "score": 0,
-   "campaign": "",
-   "caption": "jynxzi rastet komplett aus 😭\n\n🎮 Streamer: jynxzi (Twitch)\n\n#gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral #jynxzi",
-   "source": "",
-   "added": "2026-11-21T22:30:01Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_jynxzi_20261121_222827.mp4",
-   "bytes": 9494676,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367265/icj6g8mn0hfhtuj6tkvr.mp4"
-  },
-  {
-   "file": "clipforge_djmariio_20261121_212507.mp4",
-   "streamer": "djmariio",
-   "score": 0,
-   "campaign": "",
-   "caption": "djmariio rastet komplett aus 😭\n\n🎮 Streamer: djmariio (Twitch)\n\n#gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral #djmariio",
-   "source": "",
-   "added": "2026-11-21T21:26:25Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_djmariio_20261121_212507.mp4",
-   "bytes": 12945488,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367275/xxozqkti4prhgddta214.mp4"
-  },
-  {
-   "file": "clipforge_djmariio_20261121_212312.mp4",
-   "streamer": "djmariio",
-   "score": 0,
-   "campaign": "",
-   "caption": "djmariio rastet komplett aus 😭\n\n🎮 Streamer: djmariio (Twitch)\n\n#gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral #djmariio",
-   "source": "",
-   "added": "2026-11-21T21:24:30Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_djmariio_20261121_212312.mp4",
-   "bytes": 12842225,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367285/dcivqfgyu57dap3l3njf.mp4"
-  },
-  {
-   "file": "clipforge_ohnepixel_20261121_163441.mp4",
-   "streamer": "ohnepixel",
-   "score": 0,
-   "campaign": "",
-   "caption": "ohnepixel rastet komplett aus 😭\n\n🎮 Streamer: ohnepixel (Twitch)\n\n#gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral #ohnepixel",
-   "source": "",
-   "added": "2026-11-21T16:35:50Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_ohnepixel_20261121_163441.mp4",
-   "bytes": 7970285,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367293/shzhutb7pn1oirjsc9cd.mp4"
-  },
-  {
-   "file": "clipforge_ohnepixel_20261121_163145.mp4",
-   "streamer": "ohnepixel",
-   "score": 0,
-   "campaign": "",
-   "caption": "ohnepixel rastet komplett aus 😭\n\n🎮 Streamer: ohnepixel (Twitch)\n\n#gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral #ohnepixel",
-   "source": "",
-   "added": "2026-11-21T16:32:43Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_ohnepixel_20261121_163145.mp4",
-   "bytes": 5804107,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367301/jqnyr30j0udreaosr2ao.mp4"
-  },
-  {
-   "file": "djmariio_20261119_212617.mp4",
-   "streamer": "djmariio",
-   "score": 10.18,
-   "campaign": "",
-   "caption": "no voy a reiniciar no voy a reiniciar\n\n🎮 Streamer: djmariio (Twitch)\n\n#gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral #djmariio",
-   "source": "https://www.twitch.tv/videos/2933723388",
-   "added": "2026-11-20T00:54:35Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/djmariio_20261119_212617.mp4",
-   "bytes": 7948222,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367308/wjaa4mvjmwlwjiav9qsf.mp4"
-  },
-  {
-   "file": "djmariio_20261119_150023.mp4",
-   "streamer": "djmariio",
-   "score": 12.4,
-   "campaign": "",
-   "caption": "quita, agraferrado como me que me ha dicho\n\n🎮 Streamer: djmariio (Twitch)\n\n#gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral #djmariio",
-   "source": "https://www.twitch.tv/videos/2933723388",
-   "added": "2026-11-20T00:54:31Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/djmariio_20261119_150023.mp4",
-   "bytes": 19473597,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367320/nrpxjplroaiqzlxjh1w5.mp4"
-  },
-  {
-   "file": "clipforge_trymacs_20261119_110700.mp4",
-   "streamer": "trymacs",
-   "score": 0,
-   "campaign": "",
-   "caption": "trymacs rastet komplett aus 😭\n\n🎮 Streamer: trymacs (Twitch)\n\n#gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral #trymacs",
-   "source": "",
-   "added": "2026-11-19T11:08:24Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_trymacs_20261119_110700.mp4",
-   "bytes": 9899700,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367329/vos5wlp3mvzxacqlt2iu.mp4"
-  },
-  {
-   "file": "clipforge_trymacs_20261119_110231.mp4",
-   "streamer": "trymacs",
-   "score": 0,
-   "campaign": "",
-   "caption": "trymacs rastet komplett aus 😭\n\n🎮 Streamer: trymacs (Twitch)\n\n#gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral #trymacs",
-   "source": "",
-   "added": "2026-11-19T11:04:11Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_trymacs_20261119_110231.mp4",
-   "bytes": 27001298,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367340/zmw1dsckqh42kpvm61cs.mp4"
-  },
-  {
-   "file": "clipforge_kaicenat_20261119_011752.mp4",
-   "streamer": "kaicenat",
-   "score": 0,
-   "campaign": "",
-   "caption": "kaicenat rastet komplett aus 😭\n\n🎮 Streamer: kaicenat (Twitch)\n\n#gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral #kaicenat",
-   "source": "",
-   "added": "2026-11-19T01:19:19Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_kaicenat_20261119_011752.mp4",
-   "bytes": 8423720,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367349/slt6ppqisewouihmgbxl.mp4"
-  },
-  {
-   "file": "clipforge_kaicenat_20261119_010925.mp4",
-   "streamer": "kaicenat",
-   "score": 0,
-   "campaign": "",
-   "caption": "kaicenat rastet komplett aus 😭\n\n🎮 Streamer: kaicenat (Twitch)\n\n#gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral #kaicenat",
-   "source": "",
-   "added": "2026-11-19T01:10:25Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_kaicenat_20261119_010925.mp4",
-   "bytes": 8766697,
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367359/h5lweuw8ollbhymfilbr.mp4"
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795367256/w8icblcfkelkbsbm5pjb.mp4",
+   "asset_updated": "2026-11-22T00:20:26Z"
   }
  ]
 }
