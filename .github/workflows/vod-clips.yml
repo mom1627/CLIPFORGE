@@ -43,7 +43,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: clipforge-vod-clips
+  group: clipforge-vod-${{ inputs.redo_files != '' && 'redo' || inputs.campaign || 'plain' }}
   cancel-in-progress: false
 
 jobs:
