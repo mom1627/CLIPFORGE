@@ -24,14 +24,35 @@ def pick_hook(channel: str, seed: str, lang: str) -> str:
     import campaign
     if campaign.title():  # Kampagne verlangt sachlichen Titel (keine Übertreibung)
         return campaign.title()
+    titles = campaign.load().get("titles") or []
+    if titles:  # Kampagne gibt neutrale Titel vor (z. B. nicht negativ darstellen)
+        return str(titles[zlib.crc32(seed.encode()) % len(titles)]).format(s=display_name(channel))
     custom = [h.strip() for h in os.getenv("HOOKS", "").split("|") if h.strip()]
     pool = custom or HOOKS.get(lang[:2], HOOKS["en"])
     return pool[zlib.crc32(seed.encode()) % len(pool)].format(s=display_name(channel))
 
 
+PROFANITY = {"fuck", "fucking", "fucked", "shit", "bitch", "pussy", "dick", "cock", "cunt", "nigga", "nigger",
+             "whore", "slut", "porn", "sex", "penis", "vagina", "boobs", "tits", "ass", "faggot", "retard",
+             "scheiße", "scheisse", "fotze", "hure", "wichser", "ficken", "fick", "schlampe", "hurensohn"}
+
+
+def is_clean(text: str) -> bool:
+    import re as _re
+    return not any(w in PROFANITY for w in _re.findall(r"[\wäöüß]+", text.lower()))
+
+
+def _clean_wanted() -> bool:
+    """Schimpfwort-Filter nur, wenn die Kampagne ihn will ("clean_quotes": true) oder CLEAN_QUOTES=1."""
+    import campaign
+    return bool(campaign.load().get("clean_quotes")) or os.getenv("CLEAN_QUOTES") == "1"
+
+
 def pick_quote(words, around: float | None = None, max_words: int = 5) -> str:
-    """Echtes Zitat aus dem Clip (2-5 Wörter) für den roten Kasten, möglichst nahe am Highlight."""
-    lines = [(a, b, t) for a, b, t in group_words(words, max_words=max_words, max_len=3.0) if len(t.split()) >= 2]
+    """Echtes Zitat aus dem Clip (2-5 Wörter) für den roten Kasten, möglichst nahe am Highlight.
+    Optional ohne Schimpfwörter (Kampagnen-Einstellung "clean_quotes")."""
+    lines = [(a, b, t) for a, b, t in group_words(words, max_words=max_words, max_len=3.0)
+             if len(t.split()) >= 2 and (not _clean_wanted() or is_clean(t))]
     if not lines:
         return ""
     if around is None:
@@ -181,9 +202,14 @@ def _draw_block(draw, text: str, font, cx: int, top: int, fill, stroke: int, sha
         y += int(h * 1.18)
 
 
+def _no_emoji(text: str) -> str:
+    """Die Video-Schrift kann keine Emojis – sonst erscheinen Kästchen."""
+    return " ".join("".join(ch for ch in text if ord(ch) < 0x2190 and ch not in "\ufe0f\u200d").split())
+
+
 def _draw_box(draw, text: str, font, cx: int, top: int, bg, fg, pad: int, max_w: int) -> int:
     """Abgerundeter Kasten mit zentriertem Text (mehrzeilig umbrochen). Gibt die Unterkante zurück."""
-    words, rows, cur = text.split(), [], ""
+    words, rows, cur = _no_emoji(text).split(), [], ""
     for w in words:
         test = (cur + " " + w).strip()
         if cur and draw.textlength(test, font=font) > max_w - 2 * pad:
