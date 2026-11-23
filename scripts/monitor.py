@@ -144,6 +144,10 @@ def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, ch
         import facecam
         box = facecam.find(joined, float(off), length)
         print("FACECAM", channel, box, flush=True)
+    if box is None and os.getenv("REQUIRE_FACECAM", "0") == "1":
+        print("Keine Webcam gefunden – kein Clip", channel, flush=True)
+        joined.unlink(missing_ok=True)
+        return None
     box = box or cams['default']
     lc.render_vertical(joined, dest, float(off), length, off + length + 5, cam_box=box, fit=fit)
     joined.unlink(missing_ok=True)

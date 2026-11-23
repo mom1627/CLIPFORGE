@@ -115,7 +115,12 @@ def build_caption(channel: str, hook: str = "", tags: str | None = None) -> str:
     chan_tag = "#" + re.sub(r"[^a-z0-9_]", "", channel.lower()) if channel else ""
     if chan_tag and chan_tag not in tags.split():
         tags = f"{tags} {chan_tag}".strip()
-    head = (hook or f"{channel} rastet komplett aus 😭").strip()
+    try:
+        import captions
+        name = captions.display_name(channel)
+    except ImportError:
+        name = channel
+    head = (hook or f"{name} can't believe this 😭").strip()
     src = f"🎮 Streamer: {channel} (Twitch)" if channel else ""
     return "\n\n".join(p for p in (head, src, tags) if p)[:2200]
 

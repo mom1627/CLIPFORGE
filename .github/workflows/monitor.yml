@@ -46,6 +46,7 @@ jobs:
       VIDEO_WIDTH: "720"
       GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: clips
+      REQUIRE_FACECAM: "1"
       MAX_CLIPS: ${{ inputs.max_clips || '12' }}
       CAPTIONS: "1"
       BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
