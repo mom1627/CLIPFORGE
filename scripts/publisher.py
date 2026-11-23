@@ -121,7 +121,7 @@ def build_caption(channel: str, hook: str = "", tags: str | None = None) -> str:
     except ImportError:
         name = channel
     head = (hook or f"{name} can't believe this 😭").strip()
-    src = f"🎮 Streamer: {channel} (Twitch)" if channel else ""
+    src = f"🎮 Streamer: {name} (Twitch)" if channel else ""
     return "\n\n".join(p for p in (head, src, tags) if p)[:2200]
 
 

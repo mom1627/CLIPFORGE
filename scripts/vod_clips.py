@@ -538,6 +538,28 @@ def release_meta() -> list[dict]:
         return json.loads(p.read_text(encoding="utf-8")) if r.returncode == 0 and p.exists() else []
 
 
+def live_meta(name: str) -> dict | None:
+    """Live-Clip (clipforge_<kanal>_<UTC-Zeit>.mp4) in der Twitch-Aufzeichnung wiederfinden.
+    Der Zeitstempel ist der Moment des Schneidens; der Clip begann etwa 80 s davor (±20 s)."""
+    m = re.fullmatch(r"clipforge_([a-z0-9_]+)_(\d{8})_(\d{6})\.mp4", name)
+    if not m:
+        return None
+    ch = m.group(1)
+    t = datetime.strptime(m.group(2) + m.group(3), "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+    try:
+        vods = list_recent_vods(ch, helix_token(), t - timedelta(days=3), 10, "")
+    except Exception:
+        return None
+    for v in vods:
+        start = utc_time(v["created_at"])
+        if start <= t <= start + timedelta(seconds=v["duration"] + 600):
+            off = max(0, int((t - start).total_seconds()) - int(os.getenv("LIVE_REDO_LEAD", "80")))
+            return {"file": name, "streamer": ch, "vod_link": v["url"], "vod_id": v["id"],
+                    "vod_offset_seconds": off, "vod_timestamp": (start + timedelta(seconds=off)).isoformat(),
+                    "score": 0, "replaces": name}
+    return None
+
+
 def redo_clips(files: list[str], report: dict) -> int:
     """Clips mit gleichem Namen neu erzeugen: Quelle und Startsekunde stehen in clips.json des Releases."""
     meta = {r.get("file"): r for r in release_meta() if isinstance(r, dict)}
@@ -545,7 +567,7 @@ def redo_clips(files: list[str], report: dict) -> int:
     try:
         with tempfile.TemporaryDirectory(prefix="redo_") as td:
             for f in files:
-                m = meta.get(f)
+                m = meta.get(f) or live_meta(f)
                 if not m or not m.get("vod_link") or m.get("vod_offset_seconds") is None:
                     report["skip_reasons"].append({"file": f, "reason": "keine Quelldaten"}); continue
                 off = int(m["vod_offset_seconds"])
@@ -555,6 +577,8 @@ def redo_clips(files: list[str], report: dict) -> int:
                 cand = Candidate(vod["channel"], vod["id"], off, off + 40, float(m.get("score") or 0), 0.0, 0.0, "")
                 try:
                     row = produce(cand, vod, Path(td), cams)
+                    if m.get("replaces") and m["replaces"] != row["file"]:
+                        row["replaces"] = m["replaces"]
                     report["clips"].append(row)
                 except Exception as exc:
                     report["skip_reasons"].append({"file": f, "reason": clean_error(str(exc))})

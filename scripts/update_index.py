@@ -52,6 +52,28 @@ def merge(index: dict, rows: list[dict], assets: dict, camp_name: str) -> None:
         index[f] = e
 
 
+def fix_captions(index: dict) -> None:
+    """Beschreibung immer passend zur Kampagne (Pflicht-Hashtags); Lacy-Clips gehören zur Lacy-Kampagne."""
+    old = os.environ.get("CAMPAIGN")
+    try:
+        for c in index.values():
+            camp = c.get("campaign") or ("lacy" if c.get("streamer") == "lacy" else "")
+            c["campaign"] = camp
+            os.environ["CAMPAIGN"] = camp
+            head = (c.get("caption") or "").split("\n\n")[0]
+            if "rastet" in head or not head.strip():
+                head = ""
+            if camp:
+                import captions
+                head = captions.pick_hook(c.get("streamer", ""), c["file"], "en")
+            c["caption"] = publisher.build_caption(c.get("streamer", ""), head)
+    finally:
+        if old is None:
+            os.environ.pop("CAMPAIGN", None)
+        else:
+            os.environ["CAMPAIGN"] = old
+
+
 def make_preview(src: Path, dest: Path) -> bool:
     """Kleine Abspiel-Version (540p) fürs Handy; die volle 1080p-Datei bleibt zum Herunterladen."""
     r = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(src),
@@ -125,6 +147,11 @@ def main() -> int:
     hidden_file = ROOT / "docs/hidden.json"  # nicht zum Hochladen geeignet (Nacktheit, 50 s, kaputte Facecam …)
     hidden = set(json.loads(hidden_file.read_text(encoding="utf-8"))) if hidden_file.exists() else set()
     index = {k: v for k, v in index.items() if k not in hidden}
+    # ersetzte Live-Clips (neu geschnitten unter neuem Namen) aus der Liste nehmen
+    for r in rows:
+        if r.get("replaces") and r["replaces"] in index and r.get("file") in index:
+            index.pop(r["replaces"], None)
+    fix_captions(index)
     ensure_previews(index, int(os.getenv("PREVIEW_MAX", "25")))
     INDEX.parent.mkdir(parents=True, exist_ok=True)
     INDEX.write_text(json.dumps({"updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
