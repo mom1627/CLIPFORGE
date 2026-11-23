@@ -425,6 +425,14 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
         if not words:
             raise RuntimeError("Whisper fand keine echte Sprache: kein Clip mit erfundenen Untertiteln")
         hook = hook_from_speech(words)
+        import campaign as _cw
+        spoken = " ".join(str(w[2]).lower() for w in words)
+        need_w = [w.lower() for w in _cw.load().get("require_words", [])]
+        bad_w = [w.lower() for w in _cw.load().get("reject_words", [])]
+        if bad_w and any(re.search(r"\b" + re.escape(b) + r"\b", spoken) for b in bad_w):
+            raise RuntimeError("Kampagnen-Ausschluss im Gesprochenen (z. B. Glücksspiel)")
+        if need_w and not any(re.search(r"\b" + re.escape(n), spoken) for n in need_w):
+            raise RuntimeError("Kampagnen-Thema kommt im Clip nicht vor")
         width = int(os.environ["VIDEO_WIDTH"])
         height = int(round(width * 16 / 9)) // 2 * 2
         seam = height - (width * 5 // 4 // 2 * 2)

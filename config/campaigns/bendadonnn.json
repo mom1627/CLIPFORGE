@@ -1,0 +1,45 @@
+{
+  "active": true,
+  "name": "BenDaDonnn x Puffco GTA 6",
+  "channels": [
+    "bendadonnn"
+  ],
+  "logo": "",
+  "hashtags": "#BenDaDonnn #Puffco #gta6",
+  "game": "Grand Theft Auto VI",
+  "language": "en",
+  "need_facecam": true,
+  "focus": "creator",
+  "titles": [
+    "BenDaDonnn x Puffco in GTA 6 🔥",
+    "BenDaDonnn's Puffco GTA 6 stream 💨",
+    "BenDaDonnn reacts in GTA 6 👀"
+  ],
+  "require_words": [
+    "puffco",
+    "peak",
+    "hash",
+    "butler",
+    "jar",
+    "rosin",
+    "dab",
+    "hit",
+    "cloud",
+    "rip",
+    "terp",
+    "sesh",
+    "session"
+  ],
+  "reject_words": [
+    "slots",
+    "slot",
+    "blackjack",
+    "casino",
+    "stake",
+    "gamble",
+    "gambling",
+    "roulette",
+    "bet"
+  ],
+  "rules": "Nur Bens Puffco-GTA-Stream; Puffco (Gerät/Jar/Shoutout) muss vorkommen; positiv; kein Glücksspiel; keine alten Posts; keine Bots"
+}
