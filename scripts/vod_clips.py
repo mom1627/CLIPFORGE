@@ -410,7 +410,7 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
             import facecam
             box = facecam.find(source, offset, 60)
             print("FACECAM", filename, box, flush=True)
-            if box is None and c.get("need_facecam"):
+            if box is None and (c.get("need_facecam") or os.getenv("REQUIRE_FACECAM", "0") == "1"):
                 raise RuntimeError("Keine Facecam des Streamers gefunden (Kampagne verlangt Webcam)")
         os.environ["CAM_BOX"] = ",".join(str(x) for x in (box or cams["default"]))
         os.environ["VIDEO_WIDTH"] = str(bounded_int("VIDEO_WIDTH", 720, 720, 1080))

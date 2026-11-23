@@ -77,6 +77,7 @@ jobs:
       TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
       GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: clips
+      REQUIRE_FACECAM: "1"
       CLOUDINARY_CLOUD_NAME: ${{ vars.CLOUDINARY_CLOUD_NAME }}
       CLOUDINARY_UPLOAD_PRESET: ${{ vars.CLOUDINARY_UPLOAD_PRESET }}
       CLIPFORGE_OUTPUT: output
