@@ -1,0 +1,22 @@
+name: CLIPFORGE – Kampagnen automatisch (ClipUp + Lacy)
+# Startet regelmäßig vod-clips.yml für die Kampagnen. Schon geschnittene Clips werden übersprungen,
+# es entstehen also nur neue. GitHub kann geplante Läufe verzögern; mehrere Zeiten fangen das ab.
+on:
+  schedule:
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  start:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kampagnen-Läufe starten
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh workflow run vod-clips.yml -R "$REPO" -f campaign=clipup -f hours=24 -f max_clips=6
+          gh workflow run vod-clips.yml -R "$REPO" -f campaign=lacy -f hours=24 -f max_clips=4
