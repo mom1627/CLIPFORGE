@@ -62,7 +62,7 @@ jobs:
       SCAN_WINDOWS: "2"
       SCAN_SECONDS: "240"
       MIN_GAP: "120"
-      CAPTION_STYLE: box
+      CAPTION_STYLE: glow
       CAMPAIGN: ${{ inputs.campaign || '' }}
       VOD_URL: ${{ inputs.vod_url || '' }}
       REDO_FILES: ${{ inputs.redo_files || '' }}

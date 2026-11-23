@@ -231,9 +231,61 @@ def _draw_box(draw, text: str, font, cx: int, top: int, bg, fg, pad: int, max_w:
     return top + h
 
 
+HOOK_FONT = Path(__file__).resolve().parent.parent / "config" / "fonts" / "LuckiestGuy-Regular.ttf"
+
+
+def _hook_font(size: int):
+    from PIL import ImageFont
+    try:
+        return ImageFont.truetype(str(HOOK_FONT), size)
+    except OSError:
+        return _font(size)
+
+
+def draw_glow_hook(img, text: str, width: int, center_y: int):
+    """Hook wie TikTok-Beispiel: gelbe Comic-Schrift, dicker schwarzer Rand, rotes Leuchten, ohne Kasten.
+    Möglichst eine Zeile (Schrift wird verkleinert), höchstens zwei. Mittig um center_y."""
+    from PIL import Image, ImageDraw, ImageFilter
+    text = " ".join(_no_emoji(text).upper().replace("?!", "?").split())
+    max_w = round(width * 0.9)
+    d0 = ImageDraw.Draw(img)
+    size, rows = round(width * 0.085), [text]
+    while size > round(width * 0.05):
+        f = _hook_font(size)
+        if d0.textlength(text, font=f) <= max_w:
+            rows = [text]; break
+        words = text.split(); best = None
+        for i in range(1, len(words)):
+            a, b = " ".join(words[:i]), " ".join(words[i:])
+            w = max(d0.textlength(a, font=f), d0.textlength(b, font=f))
+            if w <= max_w and (best is None or w < best[0]):
+                best = (w, [a, b])
+        if best and size <= round(width * 0.07):
+            rows = best[1]; break
+        size -= 2
+    f = _hook_font(size)
+    stroke = max(4, size // 9)
+    asc, desc = f.getmetrics()
+    lh = int((asc + desc) * 0.98)
+    top = center_y - lh * len(rows) // 2
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    glow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    dl, dg = ImageDraw.Draw(layer), ImageDraw.Draw(glow)
+    for i, r in enumerate(rows):
+        x = width // 2 - int(d0.textlength(r, font=f)) // 2
+        y = top + i * lh
+        dg.text((x, y), r, font=f, fill=(255, 20, 0, 255), stroke_width=stroke * 4, stroke_fill=(255, 20, 0, 255))
+        dl.text((x, y), r, font=f, fill=(255, 226, 40, 255), stroke_width=stroke, stroke_fill=(0, 0, 0, 255))
+    glow = glow.filter(ImageFilter.GaussianBlur(radius=size * 0.45))
+    a = glow.getchannel("A").point(lambda v: min(255, int(v * 1.6)))
+    glow.putalpha(a)
+    img.alpha_composite(glow)
+    img.alpha_composite(layer)
+
+
 def build_overlay_frames(words, hook: str, width: int, height: int, duration: float, outdir: Path,
                          hook_seconds: float = 2.8, split: bool = False, quote: str = "",
-                         style: str | None = None) -> Path:
+                         style: str | None = None, seam_y: int | None = None) -> Path:
     """Zeichnet Hook + Untertitel als transparente PNGs und schreibt eine concat-Liste (Bild + Dauer).
     style 'box' (Standard): weißer Kasten mit schwarzem Titel + roter Kasten mit Zitat an der Naht,
     den ganzen Clip lang sichtbar. style 'classic': weiße Schrift mit Rand, nur die ersten Sekunden."""
@@ -247,7 +299,7 @@ def build_overlay_frames(words, hook: str, width: int, height: int, duration: fl
     f_sub, f_hook = _font(fs), _font(hs)
     f_box, f_quote = _font(round(width * 0.074)), _font(round(width * 0.066))
     hook_fill = (255, 255, 255, 255) if split else (255, 210, 0, 255)
-    hook_end = duration if style == "box" else min(hook_seconds, duration)
+    hook_end = duration if style in ("box", "glow") else min(hook_seconds, duration)
     subs = [(a, min(b, duration), wrap(_esc(t), 14)) for a, b, t in group_words(words) if a < duration]
     cuts = sorted({0.0, hook_end, duration, *[x for a, b, _ in subs for x in (a, b)]})
     cuts = [c for c in cuts if 0 <= c <= duration]
@@ -263,7 +315,10 @@ def build_overlay_frames(words, hook: str, width: int, height: int, duration: fl
         if key not in cache:
             img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
             d = ImageDraw.Draw(img)
-            if hook_on and style == "box":
+            if hook_on and style == "glow":
+                draw_glow_hook(img, hook, width, seam_y if seam_y else round(height * 0.297))
+                d = ImageDraw.Draw(img)
+            elif hook_on and style == "box":
                 top = round(height * (0.31 if split else 0.18))
                 bottom = _draw_box(d, _esc(hook), f_box, width // 2, top, (255, 255, 255, 255), (0, 0, 0, 255),
                                    pad=round(width * 0.035), max_w=round(width * 0.88))
