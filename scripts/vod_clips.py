@@ -442,12 +442,13 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
                   "-c:v", "libx264", "-preset", "medium", "-crf", os.getenv("CRF", "17"),
                   "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
                   "-movflags", "+faststart", str(Path(output).resolve())]
-        if os.getenv("CAPTION_STYLE", "box") == "box":
+        if os.getenv("CAPTION_STYLE", "box") in ("box", "glow"):
             # Weißer Titel-Kasten + roter Zitat-Kasten (echtes Zitat) an der Naht, wie Live-Clips
             title = captions.pick_hook(candidate.channel, filename, language)
             quote = captions.pick_quote(words, around=float(os.getenv("HIGHLIGHT_AT", "30")))
             lst = captions.build_overlay_frames(words, title, width, height, 60.0, tmp / "ov",
-                                                split=True, quote=quote, style="box")
+                                                split=True, quote=quote, style=os.getenv("CAPTION_STYLE", "box"),
+                                                seam_y=seam)
             hook = title + (" | " + quote if quote else "")
             subprocess_cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
                  "-i", str(Path(prelim).resolve()),
