@@ -89,7 +89,7 @@ jobs:
       - name: Python-Syntax
         run: python -m compileall -q scripts/monitor.py scripts/captions.py scripts/live_capture.py scripts/vod_clips.py tests/test_vod_clips.py
       - name: VOD-Komponententests
-        run: CAMPAIGN= python -m unittest discover -s tests -p 'test_vod_clips.py' -v
+        run: CAMPAIGN= REQUIRE_FACECAM= python -m unittest discover -s tests -p 'test_vod_clips.py' -v
       - name: Voraussetzungen und Abgrenzung pruefen
         run: |
           test -n "$APPROVED_CHANNELS" || test -n "$CAMPAIGN" || { echo "::error::GitHub-Variable APPROVED_CHANNELS fehlt. Nur freigegebene Twitch-Kanaele duerfen verarbeitet werden."; exit 1; }
