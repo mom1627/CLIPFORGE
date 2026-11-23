@@ -46,6 +46,7 @@ class BuildClipTest(unittest.TestCase):
         """Echte Segmente, das letzte ist zu kurz (Luecke): Ergebnis trotzdem genau 60 s."""
         import os
         os.environ["VIDEO_WIDTH"] = "360"
+        os.environ.pop("REQUIRE_FACECAM", None)  # Testbild hat keine Webcam
         with tempfile.TemporaryDirectory() as t:
             rec, out = Path(t) / "rec", Path(t) / "out"; rec.mkdir(); out.mkdir()
             for i, d in enumerate((30, 30, 30, 8)):
