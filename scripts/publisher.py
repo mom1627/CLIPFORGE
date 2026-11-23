@@ -113,7 +113,7 @@ def build_caption(channel: str, hook: str = "", tags: str | None = None) -> str:
     except ImportError:
         pass
     chan_tag = "#" + re.sub(r"[^a-z0-9_]", "", channel.lower()) if channel else ""
-    if chan_tag and chan_tag not in tags.split():
+    if chan_tag and chan_tag.lower() not in tags.lower().split():
         tags = f"{tags} {chan_tag}".strip()
     try:
         import captions
