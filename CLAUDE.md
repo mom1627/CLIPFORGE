@@ -17,3 +17,6 @@ Lies zuerst `HANDOFF_CODEX.md` (vollständiger Stand, offene Punkte, Regeln). Ku
 - Keine Browser-Automation oder inoffiziellen Upload-APIs für tiktok.com.
 - Nur Streamer aus der Freigabeliste. Nichts als fertig melden ohne Test mit echtem Clip.
 - Nutzer spricht Deutsch, will kurze klare Schritte und immer den günstigsten Weg.
+- Nach jeder größeren Änderung (Merge, neue Kampagne, Lauf-Ergebnis) den Stand in XMemo speichern:
+  `update_state` mit `state_key: clipforge_active_task` (verifizierter Stand, Kampagnen, offene Punkte, nächster Schritt).
+  Zu Beginn einer Sitzung diesen Stand zuerst lesen. Keine Schlüssel/Tokens speichern.
