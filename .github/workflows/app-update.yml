@@ -67,3 +67,21 @@ jobs:
             sleep $((i*7))
           done
           exit 1
+      - name: Vorschauen prüfen (abspielbar?)
+        if: always()
+        run: |
+          python - <<'P'
+          import json, urllib.request
+          bad = 0
+          for c in json.load(open("docs/clips.json"))["clips"]:
+              u = c.get("preview") or ""
+              try:
+                  r = urllib.request.urlopen(urllib.request.Request(u, headers={"Range": "bytes=0-1023"}), timeout=20)
+                  st, ct = r.status, r.headers.get("Content-Type")
+              except Exception as e:
+                  st, ct = getattr(e, "code", "ERR"), str(getattr(e, "headers", {}).get("x-cld-error", e))[:120] if hasattr(e, "headers") else str(e)[:120]
+              ok = st in (200, 206) and "video" in str(ct)
+              bad += not ok
+              print("OK " if ok else "BAD", st, ct, c["file"])
+          print("PREVIEW-CHECK bad =", bad)
+          P
