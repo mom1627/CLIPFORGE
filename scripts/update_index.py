@@ -42,6 +42,8 @@ def merge(index: dict, rows: list[dict], assets: dict, camp_name: str) -> None:
         ch = r.get("streamer") or r.get("channel") or streamer_of(f)
         hook = (r.get("hook") or "").split(" | ")[0]
         e = index.get(f, {})
+        if hook:
+            e["hook"] = hook
         e.update({"file": f, "streamer": ch, "score": float(r.get("score") or e.get("score") or 0),
                   "campaign": r.get("campaign", camp_name if camp_name != "auto" else "") or e.get("campaign", ""),
                   "caption": publisher.build_caption(ch, hook, tags=os.getenv("CAPTION_TAGS") or None),
@@ -65,7 +67,7 @@ def fix_captions(index: dict) -> None:
                 head = ""
             if camp:
                 import captions
-                head = captions.pick_hook(c.get("streamer", ""), c["file"], "en")
+                head = captions.pick_hook(c.get("streamer", ""), c["file"], "en", fresh=False)
             c["caption"] = publisher.build_caption(c.get("streamer", ""), head)
     finally:
         if old is None:
