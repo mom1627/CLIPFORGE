@@ -43,7 +43,7 @@ def merge(index: dict, rows: list[dict], assets: dict, camp_name: str) -> None:
         hook = (r.get("hook") or "").split(" | ")[0]
         e = index.get(f, {})
         e.update({"file": f, "streamer": ch, "score": float(r.get("score") or e.get("score") or 0),
-                  "campaign": r.get("campaign") or camp_name or e.get("campaign", ""),
+                  "campaign": r.get("campaign", camp_name if camp_name != "auto" else "") or e.get("campaign", ""),
                   "caption": publisher.build_caption(ch, hook, tags=os.getenv("CAPTION_TAGS") or None),
                   "source": r.get("vod_link") or e.get("source", ""),
                   "added": e.get("added") or (assets.get(f) or {}).get("created_at") or now})

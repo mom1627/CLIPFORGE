@@ -53,7 +53,7 @@ def channels() -> list[str]:
             raise ValueError(f"Ungültiger Kanalname: {name[:30]!r} (nur a-z, 0-9, _ ; Twitch-Login statt Anzeigename, z. B. kaicenat)")
         if name not in found:
             found.append(name)
-    return found[:12]
+    return found[:40]
 
 def run(command: list[str], *, timeout: int = 30, check: bool = True) -> subprocess.CompletedProcess:
     return subprocess.run(command, capture_output=True, text=True, timeout=timeout, check=check)
@@ -90,6 +90,29 @@ def twitch_game(channel: str) -> str | None:
         streams = payload.get("data", [])
         return streams[0].get("game_name", "") if streams else ""
     except (urllib.error.URLError, ValueError, TimeoutError):
+        return None
+
+def live_streams(logins: list[str]) -> dict | None:
+    """Alle Kanäle mit einer Helix-Abfrage prüfen: {login: {"viewers": int, "game": str}} nur für Live-Kanäle.
+    None = keine API-Zugangsdaten/Fehler (dann einzeln über streamlink prüfen)."""
+    client_id, secret = os.getenv("TWITCH_CLIENT_ID", ""), os.getenv("TWITCH_CLIENT_SECRET", "")
+    if not client_id or not secret or not logins:
+        return None
+    from urllib.parse import urlencode
+    try:
+        form = urlencode({"client_id": client_id, "client_secret": secret, "grant_type": "client_credentials"}).encode()
+        with urllib.request.urlopen(urllib.request.Request("https://id.twitch.tv/oauth2/token", data=form, method="POST"), timeout=15) as r:
+            token = json.load(r).get("access_token", "")
+        if not token:
+            return None
+        q = urlencode([("user_login", l) for l in logins[:100]] + [("first", "100")])
+        req = urllib.request.Request("https://api.twitch.tv/helix/streams?" + q,
+                                     headers={"Authorization": "Bearer " + token, "Client-Id": client_id})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            data = json.load(r).get("data", [])
+        return {s["user_login"].lower(): {"viewers": int(s.get("viewer_count") or 0), "game": s.get("game_name", "")}
+                for s in data if s.get("type", "live") == "live"}
+    except (urllib.error.URLError, ValueError, TimeoutError, KeyError):
         return None
 
 def capture(channel: str, seconds: int, target: Path) -> None:

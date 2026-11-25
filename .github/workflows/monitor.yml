@@ -20,14 +20,19 @@ on:
       spike_db:
         description: "Lautstärke-Anstieg in dB für ein Highlight (kleiner = mehr Clips)"
         default: "5.5"
+      chain:
+        description: "24/7: am Ende automatisch den nächsten Lauf starten (1 = ja, 0 = nein)"
+        default: "1"
   schedule:
     - cron: "10 */6 * * *"   # nur bei öffentlichem Repo (unbegrenzte Minuten), siehe if unten
 
 permissions:
   contents: write
+  actions: write
 
+# Immer nur EIN Live-Monitor gleichzeitig (24/7-Kette + Zeitplan als Reserve)
 concurrency:
-  group: clipforge-${{ github.event_name == 'schedule' && 'sched' || github.run_id }}
+  group: clipforge-live
   cancel-in-progress: false
 
 jobs:
@@ -43,7 +48,8 @@ jobs:
       TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
       MONITOR_MINUTES: ${{ inputs.minutes || '330' }}
       SPIKE_DB: ${{ inputs.spike_db || '5.5' }}
-      VIDEO_WIDTH: "720"
+      VIDEO_WIDTH: "1080"
+      CAPTION_STYLE: glow
       GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: clips
       REQUIRE_FACECAM: "1"
@@ -59,7 +65,7 @@ jobs:
       POST_GAP_MINUTES: ${{ vars.POST_GAP_MINUTES || '60' }}
       POST_SLOTS: ${{ vars.POST_SLOTS || '10,12,16,18,20' }}
       POST_TZ: Europe/Berlin
-      CAMPAIGN: ${{ inputs.campaign || vars.CAMPAIGN || '' }}
+      CAMPAIGN: ${{ inputs.campaign || vars.CAMPAIGN || 'auto' }}  # auto: Lacy -> lacy, GTA VI -> clipup, sonst keine
       POST_MODE: ${{ vars.POST_MODE || 'now' }}
       CAPTION_TAGS: ${{ vars.CAPTION_TAGS }}
       WHISPER_MODEL: ${{ vars.WHISPER_MODEL || 'small' }}
@@ -75,7 +81,10 @@ jobs:
           python -m pip install --disable-pip-version-check --quiet "streamlink>=8,<9" faster-whisper "nudenet>=3.4,<4" "opencv-python-headless<5" Pillow
       - name: Whisper-Modell vorab laden
         run: python -c "from faster_whisper import WhisperModel; WhisperModel('${{ vars.WHISPER_MODEL || 'small' }}', device='cpu', compute_type='int8')"
+      - name: Startzeit merken
+        run: echo "RUN_START=$(date +%s)" >> "$GITHUB_ENV"
       - name: Tests
+        id: tests
         run: CAMPAIGN= REQUIRE_FACECAM= python -m unittest discover -s tests -p 'test_monitor.py' -v
       - name: Release "clips" anlegen (falls fehlend)
         run: gh release view clips >/dev/null 2>&1 || gh release create clips --title "CLIPFORGE Clips" --notes "Automatisch erzeugte 9:16-MP4-Clips" --latest=false
@@ -101,6 +110,15 @@ jobs:
             sleep $((i*7))
           done
           exit 1
+      - name: 24/7 – nächsten Lauf starten
+        if: ${{ !cancelled() && steps.tests.outcome == 'success' && (github.event_name == 'schedule' || inputs.chain != '0') }}
+        env:
+          NEXT_POST: ${{ vars.AUTO_PUBLISH || '0' }}
+          NEXT_CAMPAIGN: ${{ inputs.campaign }}
+        run: |
+          # Schutz vor Endlosschleife: nur weitermachen, wenn dieser Lauf wirklich überwacht hat (>= 30 min)
+          [ $(( $(date +%s) - RUN_START )) -ge 1800 ] || { echo "::warning::Lauf war zu kurz – 24/7-Kette gestoppt (Fehler prüfen)."; exit 0; }
+          gh workflow run monitor.yml -R "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" -f post="$NEXT_POST" -f chain=1 -f campaign="$NEXT_CAMPAIGN"
       - name: MP4-Prüfung
         if: always()
         run: |
