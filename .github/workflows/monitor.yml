@@ -62,7 +62,7 @@ jobs:
       AUTO_PUBLISH: ${{ inputs.post || vars.AUTO_PUBLISH || secrets.AUTO_PUBLISH || '0' }}
       MAX_POSTS: ${{ vars.MAX_POSTS || '5' }}
       POST_BEST: ${{ vars.POST_BEST || '5' }}
-      POST_GAP_MINUTES: ${{ vars.POST_GAP_MINUTES || '60' }}
+      POST_GAP_MINUTES: ${{ vars.POST_GAP_MINUTES || '120' }}
       POST_SLOTS: ${{ vars.POST_SLOTS || '10,12,16,18,20' }}
       POST_TZ: Europe/Berlin
       CAMPAIGN: ${{ inputs.campaign || vars.CAMPAIGN || 'auto' }}  # auto: Lacy -> lacy, GTA VI -> clipup, sonst keine
