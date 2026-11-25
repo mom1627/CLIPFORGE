@@ -199,7 +199,10 @@ def campaign_for(channel: str, game: str | None, mode: str) -> str:
 def pick_live(live: dict, allowed: list[str], last_seen: dict, now: float, cooldown: float) -> str | None:
     """Bester Live-Streamer: meiste Zuschauer, passendes Spiel; wer gerade dran war, pausiert 'cooldown'
     Sekunden, damit nacheinander alle Live-Streamer bewertet werden (außer es ist sonst keiner live)."""
-    ok = [(v["viewers"], c) for c, v in live.items() if lc.game_allowed(v.get("game") or None, allowed)]
+    prio = {c.strip().lower() for c in os.getenv("PRIORITY_CHANNELS", "ohnepixel,trymacs").split(",") if c.strip()}
+    # Bevorzugte Streamer (laut TikTok-Auswertung die meisten Aufrufe) zählen dreifach
+    ok = [(v["viewers"] * (3 if c in prio else 1), c) for c, v in live.items()
+          if lc.game_allowed(v.get("game") or None, allowed)]
     if not ok:
         return None
     fresh = [x for x in ok if now - last_seen.get(x[1], 0) >= cooldown]

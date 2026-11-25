@@ -107,3 +107,12 @@ class LiveChoiceTest(unittest.TestCase):
         self.assertEqual(monitor.pick_live(live, ["*"], {"b": 900.0}, 1000.0, 600), "a")  # b pausiert
         self.assertEqual(monitor.pick_live({"b": live["b"]}, ["*"], {"b": 900.0}, 1000.0, 600), "b")  # sonst keiner
         self.assertIsNone(monitor.pick_live(live, ["chess"], {}, 1000.0, 600))
+
+
+class PriorityTest(unittest.TestCase):
+    def test_priority_channel_wins(self):
+        import os
+        os.environ["PRIORITY_CHANNELS"] = "trymacs"
+        live = {"trymacs": {"viewers": 400, "game": "GTA"}, "xqc": {"viewers": 1000, "game": "GTA"}}
+        self.assertEqual(monitor.pick_live(live, ["*"], {}, 0.0, 600), "trymacs")
+        os.environ.pop("PRIORITY_CHANNELS")

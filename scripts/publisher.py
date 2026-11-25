@@ -25,7 +25,12 @@ from pathlib import Path
 BUFFER_API = os.getenv("BUFFER_API_URL", "https://api.buffer.com")
 CLOUDINARY_API = os.getenv("CLOUDINARY_API_URL", "https://api.cloudinary.com/v1_1")
 MAX_BYTES = 100 * 1024 * 1024
-DEFAULT_TAGS = "#gta6 #gtavi #gta6gameplay #twitchclips #gaming #fyp #viral"
+# Laut Metricool (volta_ro, Nov 2026): Top-Videos hatten 4-5 kurze Tags (#gta6 #gtavi #viral + Streamer)
+DEFAULT_TAGS = "#gta6 #gtavi #viral"
+MAX_TAGS = 6
+# Kommentare fehlten fast ganz (0 bei allen Clips) -> Frage am Ende lädt zum Kommentieren ein
+CTA = ["Would you have done the same? 👇", "Rate this 1-10 👇", "Who was right here? 👇",
+       "What would you do? 👇", "Funniest part? 👇", "Did he deserve that? 👇", "Be honest… 👇"]
 
 
 class PublishError(RuntimeError):
@@ -120,9 +125,17 @@ def build_caption(channel: str, hook: str = "", tags: str | None = None) -> str:
         name = captions.display_name(channel)
     except ImportError:
         name = channel
+    tags = " ".join(dict.fromkeys(tags.split()).keys())
+    words = tags.split()
+    if len(words) > MAX_TAGS:  # Pflicht-Tags (vorne) und Streamer-Tag behalten, Rest kürzen
+        keep = words[:MAX_TAGS - 1] + ([chan_tag] if chan_tag and chan_tag not in words[:MAX_TAGS - 1] else [words[MAX_TAGS - 1]])
+        tags = " ".join(keep)
     head = (hook or f"{name} can't believe this 😭").strip()
-    src = f"🎮 Streamer: {name} (Twitch)" if channel else ""
-    return "\n\n".join(p for p in (head, src, tags) if p)[:2200]
+    if channel and name.lower() not in head.lower():
+        head = f"{head} – {name}"  # Name für Suche und Kampagnen-Regeln (z. B. Lacy)
+    import zlib
+    cta = CTA[zlib.crc32(head.encode()) % len(CTA)]
+    return "\n\n".join(p for p in (head, cta, tags) if p)[:2200]
 
 
 # ---------- Posten ----------
