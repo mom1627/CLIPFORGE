@@ -169,39 +169,89 @@ def publish(mp4: Path) -> bool:
     return r.returncode == 0
 
 
+GTA = "grand theft auto vi"
+
+
+def campaign_for(channel: str, game: str | None, mode: str) -> str:
+    """CAMPAIGN=auto: Lacy -> lacy (eigene Kampagne, kein Logo); andere Streamer in GTA VI -> clipup (Logo);
+    sonst keine Kampagne. Feste Kampagne (z. B. clipup) bleibt fest."""
+    if mode != "auto":
+        return mode
+    ch = channel.lower()
+    if ch == "lacy":
+        return "lacy"
+    if (game or "").strip().lower() == GTA:
+        return "clipup"
+    return ""
+
+
+def pick_live(live: dict, allowed: list[str], last_seen: dict, now: float, cooldown: float) -> str | None:
+    """Bester Live-Streamer: meiste Zuschauer, passendes Spiel; wer gerade dran war, pausiert 'cooldown'
+    Sekunden, damit nacheinander alle Live-Streamer bewertet werden (außer es ist sonst keiner live)."""
+    ok = [(v["viewers"], c) for c, v in live.items() if lc.game_allowed(v.get("game") or None, allowed)]
+    if not ok:
+        return None
+    fresh = [x for x in ok if now - last_seen.get(x[1], 0) >= cooldown]
+    return max(fresh or ok)[1]
+
+
 def main() -> int:
     out = Path(os.getenv("CLIPFORGE_OUTPUT", "output")); out.mkdir(parents=True, exist_ok=True)
     budget = time.time() + env_f("MONITOR_MINUTES", 330) * 60
+    session_s = env_f("SESSION_MINUTES", 40) * 60
+    cooldown = env_f("COOLDOWN_MINUTES", 60) * 60
     pre, post = int(env_f("PRE_SECONDS", 38)), 0
     max_clips = int(env_f("MAX_CLIPS", 12))
     allowed = [g.strip().lower() for g in os.getenv("ALLOWED_GAMES", "*").split(",") if g.strip()]
     import campaign
-    if campaign.game():  # aktive Kampagne verlangt ein bestimmtes Spiel (z. B. GTA VI)
-        allowed = [campaign.game().lower()]
-    import campaign
-    camp = campaign.channels()  # Kampagnen-Creator zuerst (bei Kampagne mit festen Creatorn nur diese)
-    channels = [c for c in (camp or lc.channels()) if c not in campaign.excluded()]
+    mode = os.getenv("CAMPAIGN", "").strip().lower()
+    if mode == "auto":
+        channels = list(dict.fromkeys(lc.channels() + ["lacy"]))
+        try:
+            os.environ["CAMPAIGN"] = "clipup"; channels = list(dict.fromkeys(channels + campaign.channels()))
+        finally:
+            os.environ["CAMPAIGN"] = "auto"
+    else:
+        if campaign.game():  # aktive Kampagne verlangt ein bestimmtes Spiel (z. B. GTA VI)
+            allowed = [campaign.game().lower()]
+        camp = campaign.channels()  # Kampagnen-Creator zuerst (bei Kampagne mit festen Creatorn nur diese)
+        channels = [c for c in (camp or lc.channels()) if c not in campaign.excluded()]
+    print("Überwache:", ", ".join(channels), flush=True)
+    last_seen: dict = {}
     report = {"started": datetime.now(timezone.utc).isoformat(), "sessions": [], "clips": []}
     clips = 0
     while time.time() < budget and clips < max_clips:
-        live = None
-        for c in channels:
-            if lc.available(c):
-                g = lc.twitch_game(c)
-                if not lc.game_allowed(g, allowed):
-                    continue
-                live = c; break
+        live, game = None, None
+        info = lc.live_streams(channels)
+        if info is not None:
+            print("Live jetzt:", ", ".join(f"{c} ({v['viewers']}, {v['game']})" for c, v in
+                                         sorted(info.items(), key=lambda x: -x[1]["viewers"])) or "keiner", flush=True)
+            live = pick_live(info, allowed, last_seen, time.time(), cooldown)
+            game = info[live]["game"] if live else None
+        else:
+            for c in channels:
+                if lc.available(c):
+                    g = lc.twitch_game(c)
+                    if not lc.game_allowed(g, allowed):
+                        continue
+                    live, game = c, g; break
+        if live and not lc.available(live):  # Helix sagt live, Stream aber nicht abrufbar -> nächsten nehmen
+            last_seen[live] = time.time(); live = None
         if not live:
             print("Kein freigegebener Streamer live/passend. Warte 60 s.", flush=True)
             time.sleep(60); continue
-        print(f"Live: {live}. Starte Überwachung.", flush=True)
+        camp_name = campaign_for(live, game, mode)
+        os.environ["CAMPAIGN"] = camp_name
+        last_seen[live] = time.time()
+        session_end = min(budget, time.time() + session_s)
+        print(f"Live: {live} ({game}). Kampagne: {camp_name or '-'}. Starte Überwachung.", flush=True)
         folder = out / f"rec_{live}"
         if folder.exists():
             shutil.rmtree(folder)
         src, ff = start_recorder(live, folder)
         det, done, pending, session = Detector(spike_db=env_f("SPIKE_DB", 7), min_gap=int(env_f("MIN_GAP", 120))), 0, [], {"channel": live, "clips": 0}
         try:
-            while time.time() < budget and clips < max_clips:
+            while time.time() < session_end and clips < max_clips:
                 time.sleep(5)
                 if ff.poll() is not None:
                     print("Stream beendet/Aufnahme gestoppt.", flush=True); break
@@ -224,7 +274,8 @@ def main() -> int:
                             ok = publish(mp4)
                             report["clips"].append({"file": mp4.name, "channel": live, "second": end,
                                                     "score": det.strength.get(end, 0.0),
-                                                    "bytes": mp4.stat().st_size, "published": ok, "posted": ""})
+                                                    "bytes": mp4.stat().st_size, "published": ok, "posted": "",
+                                                    "campaign": camp_name})
                             if os.getenv("POST_MODE", "end") == "now":
                                 status = post_best.post_now(report["clips"][-1], out, report)
                                 print(f"Sofort-Post {mp4.name}: {status}", flush=True)
@@ -236,6 +287,8 @@ def main() -> int:
             stop(ff, src)
             shutil.rmtree(folder, ignore_errors=True)
         report["sessions"].append(session)
+        if mode == "auto":
+            os.environ["CAMPAIGN"] = "auto"
         time.sleep(20)
     report["finished"] = datetime.now(timezone.utc).isoformat()
     write_report(out, report)

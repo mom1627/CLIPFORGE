@@ -3,11 +3,14 @@ from __future__ import annotations
 import os, subprocess, zlib
 from pathlib import Path
 
-HOOKS = {
-    "de": ["{s} rastet komplett aus ?!", "Damit hat {s} nicht gerechnet ?!", "{s} kann es nicht fassen ?!",
-           "{s} verliert die Nerven ?!", "{s} ist sprachlos ?!", "Was macht {s} da ?!", "Der Chat eskaliert bei {s} ?!"],
-    "en": ["{s} completely loses it ?!", "{s} did NOT expect this ?!", "{s} can't believe it ?!",
-           "{s} loses his mind ?!", "{s} is speechless ?!", "What is {s} doing ?!", "Chat goes crazy on {s} ?!"],
+HOOKS = {  # nur Fallback, wenn im Clip kein gutes Zitat gesprochen wird (sonst Zitat-Hook)
+    "de": ["{s} kann es nicht fassen", "Damit hat {s} nicht gerechnet", "Der Chat eskaliert bei {s}",
+           "{s} ist sprachlos", "Was macht {s} da", "{s} hat das wirklich gemacht", "{s} war nicht bereit",
+           "Deshalb schauen alle {s}", "{s} reagiert live", "Keiner hat das von {s} erwartet"],
+    "en": ["{s} can't believe this", "{s} did NOT see this coming", "Chat goes crazy on {s}",
+           "{s} is speechless", "What is {s} doing", "{s} actually did this", "{s} was NOT ready",
+           "This is why we watch {s}", "{s} reacts live", "Nobody expected this from {s}",
+           "{s} in GTA 6 is something else", "{s} with the wildest moment"],
 }
 DISPLAY = {  # Twitch-Login -> Name, den Zuschauer kennen
     "montanablack88": "Monte", "kaicenat": "Kai Cenat", "xqc": "xQc", "trymacs": "Trymacs",
@@ -30,6 +33,27 @@ def pick_hook(channel: str, seed: str, lang: str) -> str:
     custom = [h.strip() for h in os.getenv("HOOKS", "").split("|") if h.strip()]
     pool = custom or HOOKS.get(lang[:2], HOOKS["en"])
     return pool[zlib.crc32(seed.encode()) % len(pool)].format(s=display_name(channel))
+
+
+def quote_hook(words, around: float | None = None) -> str:
+    """Hook aus dem echten Gesagten (wie 'NOT EVEN A WARNING'): 3-6 Wörter nahe am Highlight.
+    Jeder Clip bekommt so einen eigenen Hook statt immer derselben Vorlage."""
+    lines = [(a, b, t.strip(" .,!?-")) for a, b, t in group_words(words, max_words=6, max_gap=0.5, max_len=3.2)]
+    lines = [(a, b, t) for a, b, t in lines if 3 <= len(t.split()) <= 6 and 12 <= len(t) <= 34
+             and (not _clean_wanted() or is_clean(t))]
+    if not lines:
+        return ""
+    if around is None:
+        around = max(b for _, b, _ in lines) * 0.6
+    return min(lines, key=lambda x: abs((x[0] + x[1]) / 2 - around))[2]
+
+
+def make_hook(channel: str, seed: str, lang: str, words=(), around: float | None = None) -> str:
+    """Kampagnen-Titel haben Vorrang (Regeln); sonst Zitat-Hook; sonst wechselnde Vorlage."""
+    import campaign
+    if campaign.title() or campaign.load().get("titles"):
+        return pick_hook(channel, seed, lang)
+    return quote_hook(list(words), around) or pick_hook(channel, seed, lang)
 
 
 PROFANITY = {"fuck", "fucking", "fucked", "shit", "bitch", "pussy", "dick", "cock", "cunt", "nigga", "nigger",
@@ -290,7 +314,7 @@ def build_overlay_frames(words, hook: str, width: int, height: int, duration: fl
     style 'box' (Standard): weißer Kasten mit schwarzem Titel + roter Kasten mit Zitat an der Naht,
     den ganzen Clip lang sichtbar. style 'classic': weiße Schrift mit Rand, nur die ersten Sekunden."""
     from PIL import Image, ImageDraw
-    style = style or os.getenv("CAPTION_STYLE", "box")
+    style = style or os.getenv("CAPTION_STYLE", "glow")
     fs, hs = round(width * 0.078), round(width * 0.092)
     sub_y = round(height * (0.80 if split else 0.735))
     import campaign
@@ -352,14 +376,15 @@ def add_captions(mp4: Path, channel: str, seed: str = "", split: bool | None = N
         w, h, d = probe(mp4)
         words, lang = transcribe(mp4)
         split = (os.getenv("VIDEO_FIT", "split") == "split") if split is None else split
-        hook = pick_hook(channel, seed or mp4.name, lang)
-        style = os.getenv("CAPTION_STYLE", "box")
+        style = os.getenv("CAPTION_STYLE", "glow")
+        hook = (make_hook(channel, seed or mp4.name, lang, words, float(os.getenv("HIGHLIGHT_AT", "42")))
+                if style == "glow" else pick_hook(channel, seed or mp4.name, lang))
         quote = pick_quote(words, around=float(os.getenv("HIGHLIGHT_AT", "42"))) if style == "box" else ""
         out = mp4.with_name(mp4.stem + "_cap.mp4")
         enc = ["-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p",
                "-c:a", "copy", "-movflags", "+faststart", out.name]
         import campaign
-        if style != "box" and has_ass_filter() and not campaign.logo_path():
+        if style == "classic" and has_ass_filter() and not campaign.logo_path():
             ass = mp4.with_suffix(".ass")
             ass.write_text(build_ass(words, hook, w, h, d, split=split), encoding="utf-8")
             cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", mp4.name, "-vf", f"ass={ass.name}"] + enc

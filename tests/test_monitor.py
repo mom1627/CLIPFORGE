@@ -92,3 +92,18 @@ class AudioTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LiveChoiceTest(unittest.TestCase):
+    def test_campaign_auto(self):
+        self.assertEqual(monitor.campaign_for("lacy", "Grand Theft Auto VI", "auto"), "lacy")
+        self.assertEqual(monitor.campaign_for("xqc", "Grand Theft Auto VI", "auto"), "clipup")
+        self.assertEqual(monitor.campaign_for("xqc", "Just Chatting", "auto"), "")
+        self.assertEqual(monitor.campaign_for("xqc", "Just Chatting", "clipup"), "clipup")
+
+    def test_pick_most_viewers_then_rotate(self):
+        live = {"a": {"viewers": 100, "game": "GTA"}, "b": {"viewers": 900, "game": "GTA"}}
+        self.assertEqual(monitor.pick_live(live, ["*"], {}, 1000.0, 600), "b")
+        self.assertEqual(monitor.pick_live(live, ["*"], {"b": 900.0}, 1000.0, 600), "a")  # b pausiert
+        self.assertEqual(monitor.pick_live({"b": live["b"]}, ["*"], {"b": 900.0}, 1000.0, 600), "b")  # sonst keiner
+        self.assertIsNone(monitor.pick_live(live, ["chess"], {}, 1000.0, 600))

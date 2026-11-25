@@ -58,3 +58,18 @@ class BoxStyleTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HookVarietyTest(unittest.TestCase):
+    def test_quote_hook_from_speech(self):
+        import os, captions
+        os.environ.pop("CAMPAIGN", None)
+        words = [(10.0 + i * 0.3, 10.25 + i * 0.3, w) for i, w in enumerate("not even a warning bro".split())]
+        self.assertEqual(captions.make_hook("xqc", "s", "en", words, 11.0).lower(), "not even a warning bro")
+
+    def test_template_fallback_varies(self):
+        import os, captions
+        os.environ.pop("CAMPAIGN", None)
+        hooks = {captions.make_hook("xqc", f"seed{i}", "en", [], None) for i in range(40)}
+        self.assertGreaterEqual(len(hooks), 8)
+        self.assertFalse(any("loses his mind" in h for h in hooks))
