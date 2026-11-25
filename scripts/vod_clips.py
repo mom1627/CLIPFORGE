@@ -424,6 +424,10 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
         words, language = captions.transcribe(prelim)
         if not words:
             raise RuntimeError("Whisper fand keine echte Sprache: kein Clip mit erfundenen Untertiteln")
+        fun = captions.reaction_score(words)
+        print("REAKTION", filename, fun, flush=True)
+        if fun < float(os.getenv("MIN_FUN", "1.8")):
+            raise RuntimeError(f"Zu langweilig (kaum Reaktion/Drama, Wert {fun})")
         hook = hook_from_speech(words)
         import campaign as _cw
         spoken = " ".join(str(w[2]).lower() for w in words)

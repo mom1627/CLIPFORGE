@@ -107,7 +107,7 @@ def clip_offset(dur: float, off: float):
 
 
 def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, channel: str,
-               cam_box: list | None = None, fit: str | None = None):
+               cam_box: list | None = None, fit: str | None = None, irl: bool = False):
     """Cut exactly 60 s from consecutive segments and render 9:16."""
     start_abs, stop_abs = clip_range(end_s, pre)
     first, last = start_abs // SEG, (stop_abs - 1) // SEG
@@ -138,6 +138,10 @@ def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, ch
     length = CLIP_LEN
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     dest = dest_dir / f"clipforge_{channel}_{stamp}.mp4"
+    if irl:  # IRL: keine Webcam-Box, ganzes Bild als Hochformat
+        lc.render_vertical(joined, dest, float(off), length, off + length + 5, fit="fill")
+        joined.unlink(missing_ok=True)
+        return dest
     cams = json.loads(Path(__file__).resolve().parent.parent.joinpath('config/cams.json').read_text())
     box = cam_box or cams.get(channel)
     if box is None:  # unbekannter Streamer: Facecam automatisch suchen
@@ -170,6 +174,13 @@ def publish(mp4: Path) -> bool:
 
 
 GTA = "grand theft auto vi"
+# Kategorien ohne Spiel: die Kamera IST das Bild -> Vollbild-Hochformat statt Webcam oben / Gameplay unten
+IRL = {"just chatting", "irl", "travel & outdoors", "food & drink", "sports", "music", "talk shows & podcasts",
+       "special events", "art", "makers & crafting", "asmr", "fitness & health"}
+
+
+def is_irl(game: str | None) -> bool:
+    return (game or "").strip().lower() in IRL
 
 
 def campaign_for(channel: str, game: str | None, mode: str) -> str:
@@ -266,16 +277,23 @@ def main() -> int:
                 for end in list(pending):
                     if recorded >= clip_range(end, pre)[1]:
                         pending.remove(end)
-                        mp4 = build_clip(folder, end, pre, post, out, live)
+                        irl = is_irl(game)
+                        mp4 = build_clip(folder, end, pre, post, out, live, irl=irl)
                         if mp4:
                             if os.getenv("CAPTIONS", "1") == "1":
-                                mp4 = captions.add_captions(mp4, live, str(end))
+                                captions.LAST_WORDS, captions.LAST_HOOK = [], ""
+                                mp4 = captions.add_captions(mp4, live, str(end), split=not irl)
+                                fun = captions.reaction_score(captions.LAST_WORDS)
+                                if fun < float(os.getenv("MIN_FUN", "1.8")):
+                                    print(f"Zu langweilig (Reaktion {fun}) – kein Clip: {mp4.name}", flush=True)
+                                    mp4.unlink(missing_ok=True)
+                                    continue
                             clips += 1; session["clips"] += 1
                             ok = publish(mp4)
                             report["clips"].append({"file": mp4.name, "channel": live, "second": end,
                                                     "score": det.strength.get(end, 0.0),
                                                     "bytes": mp4.stat().st_size, "published": ok, "posted": "",
-                                                    "campaign": camp_name})
+                                                    "campaign": camp_name, "hook": captions.LAST_HOOK})
                             if os.getenv("POST_MODE", "end") == "now":
                                 status = post_best.post_now(report["clips"][-1], out, report)
                                 print(f"Sofort-Post {mp4.name}: {status}", flush=True)

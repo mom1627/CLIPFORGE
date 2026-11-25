@@ -10,7 +10,7 @@ class CaptionTest(unittest.TestCase):
         self.assertEqual([x[2] for x in g], ["DAS WAR KRASS", "OH", "NEIN"])
         self.assertTrue(all(a < b for a, b, _ in g))
     def test_hook_deterministic(self):
-        self.assertEqual(captions.pick_hook("xqc", "5", "en"), captions.pick_hook("xqc", "5", "en"))
+        self.assertEqual(captions.pick_hook("xqc", "5", "en", fresh=False), captions.pick_hook("xqc", "5", "en", fresh=False))
     def test_burn_in_real_ffmpeg(self):
         with tempfile.TemporaryDirectory() as t:
             src = Path(t) / "a.mp4"

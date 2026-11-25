@@ -3,14 +3,17 @@ from __future__ import annotations
 import os, subprocess, zlib
 from pathlib import Path
 
-HOOKS = {  # nur Fallback, wenn im Clip kein gutes Zitat gesprochen wird (sonst Zitat-Hook)
-    "de": ["{s} kann es nicht fassen", "Damit hat {s} nicht gerechnet", "Der Chat eskaliert bei {s}",
-           "{s} ist sprachlos", "Was macht {s} da", "{s} hat das wirklich gemacht", "{s} war nicht bereit",
-           "Deshalb schauen alle {s}", "{s} reagiert live", "Keiner hat das von {s} erwartet"],
-    "en": ["{s} can't believe this", "{s} did NOT see this coming", "Chat goes crazy on {s}",
-           "{s} is speechless", "What is {s} doing", "{s} actually did this", "{s} was NOT ready",
-           "This is why we watch {s}", "{s} reacts live", "Nobody expected this from {s}",
-           "{s} in GTA 6 is something else", "{s} with the wildest moment"],
+HOOKS = {  # nur Fallback, wenn im Clip kein starkes Zitat fällt; wechseln sich ab (keine Wiederholung)
+    "de": ["Das hat keiner kommen sehen", "Warte bis zum Ende", "{s} hat das wirklich gemacht",
+           "Der Chat konnte es nicht glauben", "Das ist komplett eskaliert", "Wie kann das passieren",
+           "{s} war nicht bereit", "Das Ende ist unglaublich", "Niemand hat damit gerechnet",
+           "Diese Reaktion von {s}", "Das darf nicht wahr sein", "{s} hat es übertrieben"],
+    "en": ["Nobody saw this coming", "Wait for the ending", "{s} actually did this",
+           "This went way too far", "He was NOT ready", "The way he reacted",
+           "This can't be real", "Watch till the end", "{s} crossed the line",
+           "How did this even happen", "This escalated fast", "{s} had no idea",
+           "Chat could not believe it", "The ending is insane", "{s} was NOT ready",
+           "He really said that", "This is why we watch {s}", "Instant regret"],
 }
 DISPLAY = {  # Twitch-Login -> Name, den Zuschauer kennen
     "montanablack88": "Monte", "kaicenat": "Kai Cenat", "xqc": "xQc", "trymacs": "Trymacs",
@@ -23,7 +26,22 @@ def display_name(channel: str) -> str:
     return DISPLAY.get(channel.lower(), channel)
 
 
-def pick_hook(channel: str, seed: str, lang: str) -> str:
+_USED: set = set()
+
+
+def recent_hooks(limit: int = 40) -> set:
+    """Zuletzt benutzte Hooks (App-Liste + dieser Lauf), damit sich keiner ständig wiederholt."""
+    import json
+    try:
+        data = json.loads((Path(__file__).resolve().parent.parent / "docs/clips.json").read_text())
+        clips = sorted(data.get("clips", []), key=lambda c: str(c.get("added", "")), reverse=True)[:limit]
+        return {str(c.get("hook", "")).lower() for c in clips if c.get("hook")} | _USED
+    except (OSError, ValueError):
+        return set(_USED)
+
+
+def pick_hook(channel: str, seed: str, lang: str, fresh: bool = True) -> str:
+    """fresh=True: kürzlich benutzte Hooks meiden (neuer Clip). fresh=False: stabil je seed (App-Beschreibung)."""
     import campaign
     if campaign.title():  # Kampagne verlangt sachlichen Titel (keine Übertreibung)
         return campaign.title()
@@ -31,21 +49,61 @@ def pick_hook(channel: str, seed: str, lang: str) -> str:
     if titles:  # Kampagne gibt neutrale Titel vor (z. B. nicht negativ darstellen)
         return str(titles[zlib.crc32(seed.encode()) % len(titles)]).format(s=display_name(channel))
     custom = [h.strip() for h in os.getenv("HOOKS", "").split("|") if h.strip()]
-    pool = custom or HOOKS.get(lang[:2], HOOKS["en"])
-    return pool[zlib.crc32(seed.encode()) % len(pool)].format(s=display_name(channel))
+    pool = [h.format(s=display_name(channel)) for h in (custom or HOOKS.get(lang[:2], HOOKS["en"]))]
+    if not fresh:
+        return pool[zlib.crc32(seed.encode()) % len(pool)]
+    used = recent_hooks()
+    avail = [h for h in pool if h.lower() not in used] or pool
+    hook = avail[zlib.crc32(seed.encode()) % len(avail)]
+    _USED.add(hook.lower())
+    return hook
+
+
+PUNCH = ("no way", "what the", "oh my god", "oh my gosh", "are you serious", "you're joking", "let's go", "holy",
+         "bro", "dude", "wtf", "why", "how", "never", "nobody", "insane", "crazy", "wait", "stop", "shut up",
+         "i can't", "what?", "what!", "are you kidding", "help", "run", "oh no", "yo", "dead", "kill", "caught",
+         "scared", "screaming", "lying", "worst", "best", "can't believe", "look at", "did you see", "hell")
+FILLER = {"yeah", "yes", "okay", "ok", "um", "uh", "like", "so", "and", "the", "a", "i", "you", "it", "is", "that"}
+
+
+def punch(text: str) -> float:
+    """Wie stark zieht ein Satz Aufmerksamkeit? Reaktions-/Drama-Wörter, Frage/Ausruf zählen; Füllwörter und
+    Wiederholungen ('yeah, yeah') nicht."""
+    t = text.lower()
+    ws = [w.strip(" .,!?'") for w in t.split()]
+    if not ws:
+        return 0.0
+    score = 3.0 * sum(p in t for p in PUNCH)
+    score += 1.5 * ("?" in t) + 1.5 * ("!" in t)
+    score -= 3.0 * (sum(w in FILLER for w in ws) / len(ws) > 0.6)
+    score -= 3.0 * (len(set(ws)) < len(ws) * 0.7)
+    return score
 
 
 def quote_hook(words, around: float | None = None) -> str:
-    """Hook aus dem echten Gesagten (wie 'NOT EVEN A WARNING'): 3-6 Wörter nahe am Highlight.
-    Jeder Clip bekommt so einen eigenen Hook statt immer derselben Vorlage."""
-    lines = [(a, b, t.strip(" .,!?-")) for a, b, t in group_words(words, max_words=6, max_gap=0.5, max_len=3.2)]
+    """Hook aus dem echten Gesagten (wie 'NOT EVEN A WARNING'): der stärkste Satz (3-6 Wörter);
+    nur wenn er wirklich zieht (punch >= 3), sonst lieber eine starke Vorlage."""
+    lines = [(a, b, t.strip(" .,-")) for a, b, t in group_words(words, max_words=6, max_gap=0.5, max_len=3.2)]
     lines = [(a, b, t) for a, b, t in lines if 3 <= len(t.split()) <= 6 and 12 <= len(t) <= 34
-             and (not _clean_wanted() or is_clean(t))]
+             and (not _clean_wanted() or is_clean(t)) and t.lower() not in recent_hooks()]
     if not lines:
         return ""
     if around is None:
         around = max(b for _, b, _ in lines) * 0.6
-    return min(lines, key=lambda x: abs((x[0] + x[1]) / 2 - around))[2]
+    best = max(lines, key=lambda x: (punch(x[2]), -abs((x[0] + x[1]) / 2 - around)))
+    if punch(best[2]) < 3:
+        return ""
+    _USED.add(best[2].lower())
+    return best[2].strip(" .,")
+
+
+def reaction_score(words) -> float:
+    """Wie lebendig ist der Clip? Sprechdichte (Wörter/Sek.) + Drama-/Reaktionswörter. Langweilig < 1.5."""
+    if not words:
+        return 0.0
+    text = " ".join(w[2] for w in words).lower()
+    dur = max(1.0, words[-1][1] - words[0][0])
+    return round(len(words) / dur + 0.5 * sum(text.count(p) for p in PUNCH), 2)
 
 
 def make_hook(channel: str, seed: str, lang: str, words=(), around: float | None = None) -> str:
@@ -367,6 +425,10 @@ def build_overlay_frames(words, hook: str, width: int, height: int, duration: fl
     return lst
 
 
+LAST_WORDS: list = []
+LAST_HOOK = ""
+
+
 def add_captions(mp4: Path, channel: str, seed: str = "", split: bool | None = None) -> Path:
     """Burn hook + subtitles into mp4 (in place on success). Falls back to the original on any error.
     Mit libass: ASS-Filter. Ohne libass (Homebrew auf dem Mac): Pillow-PNGs + overlay."""
@@ -376,9 +438,12 @@ def add_captions(mp4: Path, channel: str, seed: str = "", split: bool | None = N
         w, h, d = probe(mp4)
         words, lang = transcribe(mp4)
         split = (os.getenv("VIDEO_FIT", "split") == "split") if split is None else split
+        global LAST_WORDS, LAST_HOOK
+        LAST_WORDS = words
         style = os.getenv("CAPTION_STYLE", "glow")
         hook = (make_hook(channel, seed or mp4.name, lang, words, float(os.getenv("HIGHLIGHT_AT", "42")))
                 if style == "glow" else pick_hook(channel, seed or mp4.name, lang))
+        LAST_HOOK = hook
         quote = pick_quote(words, around=float(os.getenv("HIGHLIGHT_AT", "42"))) if style == "box" else ""
         out = mp4.with_name(mp4.stem + "_cap.mp4")
         enc = ["-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p",

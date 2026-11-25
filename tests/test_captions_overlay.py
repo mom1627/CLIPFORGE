@@ -53,7 +53,9 @@ class BoxStyleTest(unittest.TestCase):
             self.assertIn("ffconcat", lst.read_text())
 
     def test_display_name_in_hook(self):
-        self.assertIn("Monte", captions.pick_hook("montanablack88", "seed", "de"))
+        hooks = [captions.pick_hook("montanablack88", f"seed{i}", "de") for i in range(30)]
+        self.assertTrue(any("Monte" in h for h in hooks))
+        self.assertFalse(any("montanablack88" in h for h in hooks))
 
 
 if __name__ == "__main__":
@@ -73,3 +75,19 @@ class HookVarietyTest(unittest.TestCase):
         hooks = {captions.make_hook("xqc", f"seed{i}", "en", [], None) for i in range(40)}
         self.assertGreaterEqual(len(hooks), 8)
         self.assertFalse(any("loses his mind" in h for h in hooks))
+
+
+class PunchTest(unittest.TestCase):
+    def test_boring_quote_falls_back(self):
+        import os, captions
+        os.environ.pop("CAMPAIGN", None)
+        words = [(10.0 + i * 0.3, 10.25 + i * 0.3, w) for i, w in enumerate("you want the four? yeah, yeah".split())]
+        self.assertEqual(captions.quote_hook(words, 11.0), "")
+        self.assertLess(captions.punch("YOU WANT THE FOUR? YEAH, YEAH"), captions.punch("NO WAY HE DID THAT"))
+
+    def test_reaction_score(self):
+        import captions
+        quiet = [(i * 3.0, i * 3.0 + 0.3, "okay") for i in range(10)]
+        loud = [(i * 0.3, i * 0.3 + 0.25, w) for i, w in enumerate(("no way bro what the hell " * 10).split())]
+        self.assertLess(captions.reaction_score(quiet), 1.5)
+        self.assertGreater(captions.reaction_score(loud), 1.5)
