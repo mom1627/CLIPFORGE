@@ -1,5 +1,22 @@
 {
- "updated": "2026-11-26T00:41:13+00:00",
+ "updated": "2026-11-26T00:45:15+00:00",
  "repo": "mom1627/CLIPFORGE",
- "clips": []
+ "clips": [
+  {
+   "hook": "Wait for the ending",
+   "quality": 3.2,
+   "game": "Grand Theft Auto VI",
+   "file": "clipforge_shroud_20261126_004117.mp4",
+   "streamer": "shroud",
+   "score": 6.13,
+   "campaign": "clipup",
+   "caption": "He really said that – shroud\n\nBe honest… 👇\n\n#gta6 #Clipup #shroud",
+   "added": "2026-11-26T00:44:59Z",
+   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_shroud_20261126_004117.mp4",
+   "bytes": 63642374,
+   "asset_updated": "2026-11-26T00:45:02Z",
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795653913/gbspaaoreb7xa9mzxvo3.mp4",
+   "source": ""
+  }
+ ]
 }
