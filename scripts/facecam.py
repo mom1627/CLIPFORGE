@@ -10,7 +10,7 @@ import os, subprocess, tempfile
 from pathlib import Path
 
 SAMPLES = int(os.getenv("FACECAM_SAMPLES", "8"))
-MIN_HITS = int(os.getenv("FACECAM_MIN_HITS", "2"))
+MIN_HITS = int(os.getenv("FACECAM_MIN_HITS", "4"))  # Hälfte der Bilder: sonst Fehltreffer (Spielfiguren, Overlays)
 TOL = float(os.getenv("FACECAM_TOL", "0.06"))          # max. Abstand der Gesichtsmitten (Anteil der Bildbreite)
 MAX_FACE = float(os.getenv("FACECAM_MAX_FACE", "0.12"))  # größere Gesichter = Vollbild-Kamera, keine Facecam
 

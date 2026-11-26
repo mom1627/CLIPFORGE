@@ -81,7 +81,22 @@ def punch(text: str) -> float:
     return score
 
 
-def sentences(words, lo: int = 3, hi: int = 7):
+DANGLING = {"a", "an", "the", "in", "on", "at", "to", "of", "for", "with", "and", "or", "but", "so", "if", "is",
+            "are", "was", "my", "your", "his", "her", "their", "our", "i", "he", "she", "we", "they", "just",
+            "from", "by", "as", "than", "when", "because", "about", "into", "gonna", "wanna"}
+
+
+def complete(text: str) -> bool:
+    """Ganzer Satz: endet nicht auf ein Bindewort/Artikel ('... IN A'), keine Wort-Wiederholung, kein Abbruch."""
+    ws = [w.strip(" .,!?'\"-").lower() for w in text.split() if w.strip(" .,!?'\"-")]
+    if len(ws) < 3 or ws[-1] in DANGLING or ws[0] in {"and", "or", "but", "of", "to", "in"}:
+        return False
+    if "..." in text or "-" in text.strip()[-1:] or len(set(ws)) < len(ws) * 0.75:
+        return False
+    return True
+
+
+def sentences(words, lo: int = 3, hi: int = 7, strict: bool = False):
     """Ganze Sätze/Satzteile aus Whisper-Wörtern: Schnitt an . ? ! , und an Pausen > 0.6 s.
     Nur 3-7 Wörter – so entstehen keine Bruchstücke wie 'TO YOU WHAT THE FUCK DO'."""
     out, cur = [], []
@@ -97,6 +112,12 @@ def sentences(words, lo: int = 3, hi: int = 7):
     res = []
     for c in out:
         text = " ".join(str(x[2]).strip() for x in c).strip(" ,-")
+        if strict:  # nur echte Sätze: endet auf . ? ! und beginnt nach Satzende/Pause
+            i0 = words.index(c[0]) if c[0] in words else 0
+            prev = str(words[i0 - 1][2]).strip() if i0 > 0 else "."
+            starts = prev[-1:] in ".?!"  # Satzanfang, nicht nur Pause (sonst 'IS SHE DOING, DUDE')
+            if not (str(c[-1][2]).strip()[-1:] in ".?!" and starts and complete(text)):
+                continue
         if lo <= len(text.split()) <= hi and 12 <= len(text) <= 38:
             res.append((c[0][0], c[-1][1], text.upper()))
     return res
@@ -105,7 +126,9 @@ def sentences(words, lo: int = 3, hi: int = 7):
 def quote_hook(words, around: float | None = None) -> str:
     """Hook aus dem echten Gesagten (wie 'NOT EVEN A WARNING'): der stärkste ganze Satz (3-7 Wörter);
     nur wenn er wirklich zieht (punch >= 3), sonst lieber eine starke Vorlage."""
-    lines = [(a, b, t) for a, b, t in sentences(list(words))
+    if os.getenv("QUOTE_HOOKS", "1") == "0":
+        return ""
+    lines = [(a, b, t) for a, b, t in sentences(list(words), strict=True)
              if (not _clean_wanted() or is_clean(t)) and t.lower() not in recent_hooks()]
     if not lines:
         return ""

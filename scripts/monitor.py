@@ -196,13 +196,47 @@ def campaign_for(channel: str, game: str | None, mode: str) -> str:
     return ""
 
 
+def game_ok(game: str | None, allowed: list[str]) -> bool:
+    """Wie lc.game_allowed, aber bei festem Spiel (STRICT_GAME) zählt unbekannt (None) als NEIN."""
+    if os.getenv("STRICT_GAME", "").strip() and not game:
+        return False
+    return lc.game_allowed(game, allowed)
+
+
+def still_in_game(channel: str, allowed: list[str]) -> bool:
+    """Direkt vor dem Schnitt: spielt der Streamer noch das erlaubte Spiel? (Kategorie-Wechsel abfangen)"""
+    info = lc.live_streams([channel])
+    if info is None:  # API nicht erreichbar: nur ohne festes Spiel weitermachen
+        return not os.getenv("STRICT_GAME", "").strip()
+    v = info.get(channel)
+    return bool(v) and game_ok(v.get("game") or None, allowed)
+
+
+def quality_ok(mp4: Path) -> tuple[bool, str]:
+    """Pflicht-Prüfungen am fertigen Clip: Gameplay unten, Streamer oben in der Webcam, keine Nacktheit."""
+    if os.getenv("GAMEPLAY_CHECK", "1") == "1":
+        import gameplay_check
+        ok, why = gameplay_check.full_check(mp4)
+        if not ok:
+            return False, why
+    if os.getenv("NSFW_CHECK", "1") == "1":
+        try:
+            import safety
+            ok, why = safety.check(mp4)
+            if not ok:
+                return False, "Nacktheits-Filter: " + why
+        except ImportError:
+            pass
+    return True, "ok"
+
+
 def pick_live(live: dict, allowed: list[str], last_seen: dict, now: float, cooldown: float) -> str | None:
     """Bester Live-Streamer: meiste Zuschauer, passendes Spiel; wer gerade dran war, pausiert 'cooldown'
     Sekunden, damit nacheinander alle Live-Streamer bewertet werden (außer es ist sonst keiner live)."""
     prio = {c.strip().lower() for c in os.getenv("PRIORITY_CHANNELS", "ohnepixel,trymacs").split(",") if c.strip()}
     # Bevorzugte Streamer (laut TikTok-Auswertung die meisten Aufrufe) zählen dreifach
     ok = [(v["viewers"] * (3 if c in prio else 1), c) for c, v in live.items()
-          if lc.game_allowed(v.get("game") or None, allowed)]
+          if game_ok(v.get("game") or None, allowed)]
     if not ok:
         return None
     fresh = [x for x in ok if now - last_seen.get(x[1], 0) >= cooldown]
@@ -217,6 +251,9 @@ def main() -> int:
     pre, post = int(env_f("PRE_SECONDS", 38)), 0
     max_clips = int(env_f("MAX_CLIPS", 12))
     allowed = [g.strip().lower() for g in os.getenv("ALLOWED_GAMES", "*").split(",") if g.strip()]
+    strict = os.getenv("STRICT_GAME", "").strip().lower()
+    if strict:  # nur dieses Spiel (z. B. GTA VI) – kein Just Chatting/IRL/anderes Spiel
+        allowed = [strict]
     import campaign
     mode = os.getenv("CAMPAIGN", "").strip().lower()
     if mode == "auto":
@@ -246,7 +283,7 @@ def main() -> int:
             for c in channels:
                 if lc.available(c):
                     g = lc.twitch_game(c)
-                    if not lc.game_allowed(g, allowed):
+                    if not game_ok(g, allowed):
                         continue
                     live, game = c, g; break
         if live and not lc.available(live):  # Helix sagt live, Stream aber nicht abrufbar -> nächsten nehmen
@@ -280,6 +317,10 @@ def main() -> int:
                 for end in list(pending):
                     if recorded >= clip_range(end, pre)[1]:
                         pending.remove(end)
+                        if not still_in_game(live, allowed):
+                            print(f"{live} spielt nicht mehr {strict or 'ein erlaubtes Spiel'} – kein Clip, Wechsel.", flush=True)
+                            session_end = 0
+                            break
                         irl = is_irl(game)
                         mp4 = build_clip(folder, end, pre, post, out, live, irl=irl)
                         if mp4:
@@ -291,17 +332,31 @@ def main() -> int:
                                     print(f"Zu langweilig (Reaktion {fun}) – kein Clip: {mp4.name}", flush=True)
                                     mp4.unlink(missing_ok=True)
                                     continue
+                            else:
+                                fun = 0.0
+                            good, why = quality_ok(mp4)
+                            print(f"PRÜFUNG {mp4.name}: {why}", flush=True)
+                            if not good:
+                                mp4.unlink(missing_ok=True)
+                                continue
                             clips += 1; session["clips"] += 1
                             ok = publish(mp4)
                             report["clips"].append({"file": mp4.name, "channel": live, "second": end,
                                                     "score": det.strength.get(end, 0.0),
                                                     "bytes": mp4.stat().st_size, "published": ok, "posted": "",
-                                                    "campaign": camp_name, "hook": captions.LAST_HOOK})
+                                                    "campaign": camp_name, "hook": captions.LAST_HOOK,
+                                                    "quality": fun, "game": game or ""})
                             if os.getenv("POST_MODE", "end") == "now":
                                 status = post_best.post_now(report["clips"][-1], out, report)
                                 print(f"Sofort-Post {mp4.name}: {status}", flush=True)
                             write_report(out, report)  # laufend, damit "Beste Clips posten" auch nach Abbruch arbeitet
                             print(f"MP4 fertig: {mp4.name} (veröffentlicht={ok})", flush=True)
+                            if ok:  # sofort in der Handy-App zeigen, nicht erst am Ende des Laufs
+                                import app_sync
+                                try:
+                                    app_sync.sync()
+                                except Exception as exc:  # App-Liste darf den Monitor nie stoppen
+                                    print("App-Aktualisierung fehlgeschlagen:", exc, flush=True)
                 for old in segs[:max(0, done - 12)]:  # rolling buffer ~6 min
                     old.unlink(missing_ok=True)
         finally:

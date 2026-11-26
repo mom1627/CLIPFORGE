@@ -88,6 +88,18 @@ wird passend zur Kampagne erzeugt (`fix_captions`, Lacy → `#LACY`). Echtes Lö
 - BenDaDonnn-Kanalname prüfen; erster Lauf steht aus.
 - Prüfe neue Clips immer per Standbild-Leiste (alle 10–12 s) auf: Webcam oben, GTA-Gameplay, Logo nur bei ClipUp.
 
+## 7a. Qualitätsregeln (seit 26.11.2026, nach Nutzer-Beschwerde)
+
+- **Nur GTA VI**: Live-Monitor `STRICT_GAME=Grand Theft Auto VI` (unbekannte Kategorie = nein), Kategorie wird direkt
+  vor jedem Schnitt erneut geprüft (Wechsel zu Just Chatting → kein Clip). VOD: ohne Twitch-Kapitel reicht der Titel
+  nur noch bei Einzel-Kampagnen (Lacy, Dylan, Ben), nicht bei ClipUp (Hasan-Fall).
+- **Platzierung**: Facecam braucht Gesicht in ≥4 von 8 Bildern; fertiger Clip muss oben in ≥40 % der Bilder ein
+  Gesicht haben (`gameplay_check.cam_check`) und unten Gameplay ohne großes Gesicht (`full_check`), in beiden Pipelines.
+- **Hooks**: Zitat-Hook nur als ganzer Satz (Satzanfang nach . ? !, Ende auf . ? !, kein Ende auf „in a“ usw.),
+  sonst Vorlage. `QUOTE_HOOKS=0` schaltet Zitat-Hooks ganz ab.
+- **App**: nur die besten `KEEP_BEST=3` Clips der letzten 24 h (Rang: Reaktion `quality`, dann Score); der Rest wird
+  aus dem Release gelöscht. Live-Clips erscheinen **sofort** (`scripts/app_sync.py` nach jedem Upload).
+
 ## 8. Arbeitsweise (bitte einhalten)
 
 - Branch → PR → mergen; Tests `python3 -m unittest discover -s tests` müssen grün sein (Stand: 78+).

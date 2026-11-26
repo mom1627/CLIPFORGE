@@ -71,3 +71,47 @@ def check(mp4: Path, detect=None) -> tuple[bool, str]:
         if share >= FACE_FRAMES:
             return False, f"Streamer statt Gameplay im Spielbereich ({share:.0%} der Bilder)"
         return True, f"Gameplay ok (Bewegung {m:.1f})"
+
+
+CAM_FRAMES = float(os.getenv("CAM_FACE_FRAMES", "0.4"))  # Anteil der Bilder, in denen oben ein Gesicht sein muss
+
+
+def _top_crops(mp4: Path, outdir: Path) -> list[Path]:
+    # oberer Webcam-Bereich (über dem Hook an der Naht)
+    subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(mp4),
+                    "-vf", f"fps={SAMPLES}/60,crop=iw:ih*0.32:0:0", str(outdir / "t_%02d.png")],
+                   check=False, timeout=120)
+    return sorted(outdir.glob("t_*.png"))
+
+
+def face_frames(images: list[Path], detect) -> float:
+    hits = sum(any(str(d.get("class", "")).startswith("FACE") for d in detect(p)) for p in images)
+    return hits / max(1, len(images))
+
+
+def cam_check(mp4: Path, detect=None) -> tuple[bool, str]:
+    """Sitzt der Streamer wirklich oben in der Webcam-Fläche? Sonst ist die Platzierung falsch
+    (z. B. Webcam-Ausschnitt zeigt Spiel/Overlay und der Streamer landet unten im Spielbereich)."""
+    if detect is None:
+        try:
+            import facecam, cv2  # noqa: F401
+            detect = facecam.detect_cv
+        except ImportError:
+            return True, "Webcam-Prüfung nicht verfügbar"
+    with tempfile.TemporaryDirectory(prefix="cam_") as t:
+        imgs = _top_crops(mp4, Path(t))
+        if len(imgs) < 3:
+            return True, "zu wenige Bilder, nicht geprüft"
+        share = face_frames(imgs, detect)
+        if share < CAM_FRAMES:
+            return False, f"kein Streamer oben in der Webcam ({share:.0%} der Bilder)"
+        return True, f"Webcam ok ({share:.0%})"
+
+
+def full_check(mp4: Path) -> tuple[bool, str]:
+    """Alle Pflicht-Prüfungen für einen fertigen Clip: Gameplay unten, Streamer oben."""
+    ok, why = check(mp4)
+    if not ok:
+        return ok, why
+    ok2, why2 = cam_check(mp4)
+    return ok2, f"{why}; {why2}"

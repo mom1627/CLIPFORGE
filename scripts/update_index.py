@@ -44,6 +44,9 @@ def merge(index: dict, rows: list[dict], assets: dict, camp_name: str) -> None:
         e = index.get(f, {})
         if hook:
             e["hook"] = hook
+        for k in ("quality", "game"):
+            if r.get(k) not in (None, ""):
+                e[k] = r[k]
         e.update({"file": f, "streamer": ch, "score": float(r.get("score") or e.get("score") or 0),
                   "campaign": r.get("campaign", camp_name if camp_name != "auto" else "") or e.get("campaign", ""),
                   "caption": publisher.build_caption(ch, hook, tags=os.getenv("CAPTION_TAGS") or None),
@@ -74,6 +77,38 @@ def fix_captions(index: dict) -> None:
             os.environ.pop("CAMPAIGN", None)
         else:
             os.environ["CAMPAIGN"] = old
+
+
+def rank_key(c: dict) -> tuple:
+    """Bester Clip zuerst: Reaktion/Drama im Clip (quality), dann Chat-/Ton-Spitze, dann neuer."""
+    return (float(c.get("quality") or 0), float(c.get("score") or 0), str(c.get("added", "")))
+
+
+def best_only(index: dict, keep: int, hours: float, now: datetime | None = None) -> tuple[dict, list[str]]:
+    """Nur die besten 'keep' Clips behalten: aus den letzten 'hours' Stunden die besten; reicht das nicht,
+    mit den neuesten auffüllen. Rückgabe: (behaltene Clips, zu löschende Dateinamen)."""
+    if keep <= 0 or len(index) <= keep:
+        return index, []
+    now = now or datetime.now(timezone.utc)
+
+    def age_h(c):
+        try:
+            t = datetime.fromisoformat(str(c.get("added", "")).replace("Z", "+00:00"))
+            return (now - t).total_seconds() / 3600
+        except ValueError:
+            return 10**9
+    recent = sorted((c for c in index.values() if age_h(c) <= hours), key=rank_key, reverse=True)
+    rest = sorted((c for c in index.values() if age_h(c) > hours), key=lambda c: str(c.get("added", "")), reverse=True)
+    kept = (recent + rest)[:keep]
+    names = {c["file"] for c in kept}
+    return {k: v for k, v in index.items() if k in names}, [k for k in index if k not in names]
+
+
+def delete_assets(names: list[str]) -> None:
+    for n in names:
+        r = subprocess.run(["gh", "release", "delete-asset", TAG, n, "-R", REPO, "-y"],
+                           capture_output=True, text=True, timeout=60)
+        print("Gelöscht (nicht unter den besten):" if r.returncode == 0 else "Löschen fehlgeschlagen:", n)
 
 
 def make_preview(src: Path, dest: Path) -> bool:
@@ -153,6 +188,13 @@ def main() -> int:
     for r in rows:
         if r.get("replaces") and r["replaces"] in index and r.get("file") in index:
             index.pop(r["replaces"], None)
+    keep = int(os.getenv("KEEP_BEST", "0") or 0)  # z. B. 3: App zeigt nur die 3 besten, Rest wird gelöscht
+    if keep and not (len(sys.argv) > 1 and sys.argv[1] == "--merge"):
+        index, drop = best_only(index, keep, float(os.getenv("KEEP_HOURS", "24")))
+        if drop and assets:
+            delete_assets([d for d in drop if d in assets])
+    elif keep:  # --merge nach Push-Konflikt: nur filtern, gelöscht wurde schon
+        index, _ = best_only(index, keep, float(os.getenv("KEEP_HOURS", "24")))
     fix_captions(index)
     ensure_previews(index, int(os.getenv("PREVIEW_MAX", "25")))
     INDEX.parent.mkdir(parents=True, exist_ok=True)
