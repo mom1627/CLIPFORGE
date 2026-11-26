@@ -1,5 +1,21 @@
 {
- "updated": "2026-11-26T03:19:05+00:00",
+ "updated": "2026-11-26T03:34:22+00:00",
  "repo": "mom1627/CLIPFORGE",
- "clips": []
+ "clips": [
+  {
+   "hook": "WHAT ARE YOU DOING BRO?",
+   "quality": 8.66,
+   "file": "kaicenat_20261124_181759.mp4",
+   "streamer": "kaicenat",
+   "score": 28000.0,
+   "campaign": "clipup",
+   "caption": "He really said that – Kai Cenat\n\nDid he deserve that? 👇\n\n#Clipup #gta6 #gtavi #viral #kaicenat",
+   "source": "https://www.twitch.tv/videos/2939504732",
+   "added": "2026-11-26T03:34:06Z",
+   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/kaicenat_20261124_181759.mp4",
+   "bytes": 44176472,
+   "asset_updated": "2026-11-26T03:34:07Z",
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795664060/pqjhd3gfmd2107cqxoyt.mp4"
+  }
+ ]
 }
