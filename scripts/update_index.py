@@ -25,12 +25,13 @@ def streamer_of(name: str) -> str:
     return m.group(1) if m else ""
 
 
-def release_assets() -> list[dict]:
+def release_assets() -> list[dict] | None:
+    """Dateien im Release; None = nicht abrufbar (dann nichts aus der Liste entfernen)."""
     try:
         r = subprocess.run(["gh", "api", f"repos/{REPO}/releases/tags/{TAG}"], capture_output=True, text=True, timeout=60)
-        return json.loads(r.stdout).get("assets", []) if r.returncode == 0 else []
+        return json.loads(r.stdout).get("assets", []) if r.returncode == 0 else None
     except (OSError, ValueError, subprocess.TimeoutExpired):
-        return []
+        return None
 
 
 def merge(index: dict, rows: list[dict], assets: dict, camp_name: str) -> None:
@@ -160,7 +161,8 @@ def main() -> int:
             if c.get("asset_updated") and c.get("asset_updated") != old.get("asset_updated"):
                 old.pop("preview", None)  # neu geschnittene Datei: alte Vorschau verwerfen
             index[c["file"]] = {**old, **{k: v for k, v in c.items() if v not in ("", None)}}
-    assets = {a["name"]: a for a in release_assets() if a["name"].endswith(".mp4")}
+    listed = release_assets()
+    assets = {a["name"]: a for a in (listed or []) if a["name"].endswith(".mp4")}
     camp = os.getenv("CAMPAIGN", "").strip().lower()
     rows = []
     for rep in ("vod_report.json", "monitor_report.json"):
@@ -180,7 +182,7 @@ def main() -> int:
             e.pop("preview", None)  # Datei wurde neu geschnitten -> neue Vorschau
         e["asset_updated"] = a.get("updated_at", "")
         e["bytes"] = a["size"]
-    index = {k: v for k, v in index.items() if k in assets or not assets}  # gelöschte Assets entfernen
+    index = {k: v for k, v in index.items() if k in assets or listed is None}  # gelöschte Assets entfernen (auch alle)
     hidden_file = ROOT / "docs/hidden.json"  # nicht zum Hochladen geeignet (Nacktheit, 50 s, kaputte Facecam …)
     hidden = set(json.loads(hidden_file.read_text(encoding="utf-8"))) if hidden_file.exists() else set()
     index = {k: v for k, v in index.items() if k not in hidden}
