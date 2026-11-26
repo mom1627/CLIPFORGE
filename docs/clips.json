@@ -1,54 +1,5 @@
 {
- "updated": "2026-11-26T02:44:21+00:00",
+ "updated": "2026-11-26T03:19:05+00:00",
  "repo": "mom1627/CLIPFORGE",
- "clips": [
-  {
-   "hook": "The ending is insane",
-   "quality": 3.11,
-   "game": "Grand Theft Auto VI",
-   "file": "clipforge_shroud_20261126_015909.mp4",
-   "streamer": "shroud",
-   "score": 5.57,
-   "campaign": "clipup",
-   "caption": "Instant regret – shroud\n\nWhat would you do? 👇\n\n#gta6 #Clipup #shroud",
-   "added": "2026-11-26T02:02:53Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_shroud_20261126_015909.mp4",
-   "bytes": 67565495,
-   "asset_updated": "2026-11-26T02:02:55Z",
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795658587/gcjwxyayusrupmlpfiwb.mp4",
-   "source": ""
-  },
-  {
-   "hook": "WHAT THE HELL?",
-   "quality": 3.63,
-   "game": "Grand Theft Auto VI",
-   "file": "clipforge_shroud_20261126_004850.mp4",
-   "streamer": "shroud",
-   "score": 8.51,
-   "campaign": "clipup",
-   "caption": "This is why we watch shroud\n\nFunniest part? 👇\n\n#gta6 #Clipup #shroud",
-   "added": "2026-11-26T00:52:19Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_shroud_20261126_004850.mp4",
-   "bytes": 69978805,
-   "asset_updated": "2026-11-26T00:52:21Z",
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795654352/fr34tqdoemosou2n3rm9.mp4",
-   "source": ""
-  },
-  {
-   "hook": "I'LL DO MY BEST",
-   "quality": 4.25,
-   "game": "Grand Theft Auto VI",
-   "file": "clipforge_shroud_20261126_004523.mp4",
-   "streamer": "shroud",
-   "score": 5.8,
-   "campaign": "clipup",
-   "caption": "Chat could not believe it – shroud\n\nWould you have done the same? 👇\n\n#gta6 #Clipup #shroud",
-   "added": "2026-11-26T00:48:37Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_shroud_20261126_004523.mp4",
-   "bytes": 38092529,
-   "asset_updated": "2026-11-26T00:48:38Z",
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795654127/lmlnr3kgqdchxdfypy8b.mp4",
-   "source": ""
-  }
- ]
+ "clips": []
 }
