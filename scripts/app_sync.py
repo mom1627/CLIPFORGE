@@ -19,6 +19,10 @@ def sync(message: str = "Clip-Übersicht aktualisiert [skip ci]") -> bool:
         return False
     py = sys.executable
     branch = os.getenv("GITHUB_REF_NAME", "main")
+    # ERST die aktuelle Liste holen: sonst rechnet update_index mit einer alten Liste, kennt neuere Clips
+    # anderer Läufe nicht (keine Bewertung) und löscht sie als "schlechteste" (Kai-Clip-Fehler 26.11.)
+    _git("fetch", "-q", "origin", branch)
+    _git("checkout", "-q", f"origin/{branch}", "--", "docs/clips.json")
     r = subprocess.run([py, "scripts/update_index.py"], cwd=ROOT, capture_output=True, text=True, timeout=1500)
     print(r.stdout[-400:], r.stderr[-400:], flush=True)
     mine = Path(tempfile.gettempdir()) / "clipforge_mine.json"
