@@ -214,7 +214,10 @@ def url_vod(url: str, channel: str) -> dict:
     if info.get("is_live"):
         raise RuntimeError("Stream läuft noch live – Clips erst aus der fertigen Aufzeichnung")
     ts = info.get("release_timestamp") or info.get("timestamp") or time.time()
-    return {"id": str(info.get("id") or "vod"), "url": info.get("webpage_url") or url,
+    vid = str(info.get("id") or "vod")
+    if "twitch.tv" in url and vid[:1] == "v" and vid[1:].isdigit():  # yt-dlp: 'v123' -> Twitch-ID '123' (Chat/Kapitel)
+        vid = vid[1:]
+    return {"id": vid, "url": info.get("webpage_url") or url,
             "duration": int(info.get("duration") or 0), "title": info.get("title") or "",
             "channel": channel or (info.get("channel") or "creator").lower(),
             "created_at": datetime.fromtimestamp(ts, timezone.utc).isoformat(),
