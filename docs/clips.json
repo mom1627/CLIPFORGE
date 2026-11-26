@@ -1,7 +1,23 @@
 {
- "updated": "2026-11-26T00:45:15+00:00",
+ "updated": "2026-11-26T00:48:48+00:00",
  "repo": "mom1627/CLIPFORGE",
  "clips": [
+  {
+   "hook": "I'LL DO MY BEST",
+   "quality": 4.25,
+   "game": "Grand Theft Auto VI",
+   "file": "clipforge_shroud_20261126_004523.mp4",
+   "streamer": "shroud",
+   "score": 5.8,
+   "campaign": "clipup",
+   "caption": "Chat could not believe it – shroud\n\nWould you have done the same? 👇\n\n#gta6 #Clipup #shroud",
+   "added": "2026-11-26T00:48:37Z",
+   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_shroud_20261126_004523.mp4",
+   "bytes": 38092529,
+   "asset_updated": "2026-11-26T00:48:38Z",
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795654127/lmlnr3kgqdchxdfypy8b.mp4",
+   "source": ""
+  },
   {
    "hook": "Wait for the ending",
    "quality": 3.2,
