@@ -78,6 +78,8 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: clips
       REQUIRE_FACECAM: "1"
+      KEEP_BEST: ${{ vars.KEEP_BEST || '3' }}   # App zeigt nur die besten 3 (letzte 24 h), Rest wird gelöscht
+      KEEP_HOURS: "24"
       CLOUDINARY_CLOUD_NAME: ${{ vars.CLOUDINARY_CLOUD_NAME }}
       CLOUDINARY_UPLOAD_PRESET: ${{ vars.CLOUDINARY_UPLOAD_PRESET }}
       CLIPFORGE_OUTPUT: output

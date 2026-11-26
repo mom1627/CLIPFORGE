@@ -478,9 +478,9 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
             raise RuntimeError("FFmpeg Untertitel/Hook-Render: " + clean_error(run.stderr))
         verified = verify_mp4(output, width, height)
         import campaign as _cmp
-        if _cmp.game() and os.getenv("GAMEPLAY_CHECK", "1") == "1":  # Pflicht-Spiel: echtes Gameplay im Bild?
+        if os.getenv("GAMEPLAY_CHECK", "1") == "1":  # immer: Gameplay unten, Streamer oben (sonst falsche Platzierung)
             import gameplay_check
-            ok, why = gameplay_check.check(output)
+            ok, why = gameplay_check.full_check(output)
             print("GAMEPLAY", filename, ok, why, flush=True)
             if not ok:
                 output.unlink(missing_ok=True)
@@ -498,7 +498,7 @@ def produce(candidate: Candidate, vod: dict, folder: Path, cams: dict) -> dict:
                 "vod_timestamp": dt.isoformat(),
                 "hook": hook, "spoken_language": language,
                 "campaign": os.getenv("CAMPAIGN", "").strip().lower(),
-                "score": candidate.score,
+                "score": candidate.score, "quality": fun,
                 "audio_peak_db": candidate.audio_peak_db,
                 "chat_boost": candidate.chat_boost,
                 "ffprobe": verified}
@@ -688,9 +688,12 @@ def main() -> int:
                         chapters[c.vod_id] = chat_probe.game_chapters(c.vod_id, v["duration"])
                         report["warnings"].append(f"Kapitel {c.vod_id}: {chapters[c.vod_id]}")
                     ok = chat_probe.in_game(chapters[c.vod_id], c.peak_s, need_game)
-                    if ok is None:  # keine Kapitel: nur wenn der VOD-Titel das Spiel nennt, sonst unklar -> weg
+                    if ok is None:  # keine Kapitel / unbekannt: der Titel allein reicht nicht (Hasan: "GTA" im
+                        # Titel, aber Just Chatting) -> nur mit STRICT_GAME=0 wie früher über den Titel
                         title = (v.get("title") or "").lower()
-                        ok = chapters[c.vod_id] == [] and ("gta" in title or need_game.lower() in title)
+                        single = len(_camp.channels()) == 1  # Einzel-Kampagne (Lacy-Marathon): Titel reicht
+                        ok = ((os.getenv("STRICT_GAME", "1") == "0" or single) and chapters[c.vod_id] == []
+                              and ("gta" in title or need_game.lower() in title))
                     if ok is False:
                         report["skip_reasons"].append({"vod": v["url"], "offset": c.start_s,
                                                        "reason": f"nicht {need_game} an dieser Stelle"})

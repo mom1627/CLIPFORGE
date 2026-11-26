@@ -66,8 +66,16 @@ class HookVarietyTest(unittest.TestCase):
     def test_quote_hook_from_speech(self):
         import os, captions
         os.environ.pop("CAMPAIGN", None)
-        words = [(10.0 + i * 0.3, 10.25 + i * 0.3, w) for i, w in enumerate("not even a warning bro".split())]
-        self.assertEqual(captions.make_hook("xqc", "s", "en", words, 11.0).lower(), "not even a warning bro")
+        words = [(10.0 + i * 0.3, 10.25 + i * 0.3, w) for i, w in enumerate("okay. not even a warning bro!".split())]
+        self.assertEqual(captions.make_hook("xqc", "s", "en", words, 11.0).lower(), "not even a warning bro!")
+
+    def test_fragment_hooks_rejected(self):
+        import os, captions
+        os.environ.pop("CAMPAIGN", None)
+        for txt in ("so much dead air in a", "is she doing, dude. stop", "what is. so much dead air in a!",
+                    "yeah. your boy's a genius, dude"):
+            words = [(i * 0.3, i * 0.3 + 0.25, w) for i, w in enumerate(txt.split())]
+            self.assertEqual(captions.quote_hook(words, 1.0), "", txt)
 
     def test_template_fallback_varies(self):
         import os, captions
