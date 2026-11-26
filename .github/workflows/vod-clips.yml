@@ -38,6 +38,11 @@ on:
         required: false
         default: "GTA"
         type: string
+      min_fun:
+        description: "Mindest-Reaktion im Clip (Sprechtempo + Reaktionswörter); höher = nur starke Reaktionen"
+        required: false
+        default: "4"
+        type: string
 
 permissions:
   contents: write
@@ -58,6 +63,7 @@ jobs:
       VOD_HOURS: ${{ inputs.hours || '96' }}
       MAX_CLIPS: ${{ inputs.max_clips || '7' }}
       TITLE_FILTER: ${{ inputs.title_filter || 'GTA' }}
+      MIN_FUN: ${{ inputs.min_fun || vars.MIN_FUN || '4' }}
       VODS_PER_STREAMER: "1"
       SCAN_WINDOWS: "2"
       SCAN_SECONDS: "240"

@@ -55,6 +55,7 @@ jobs:
       REQUIRE_FACECAM: "1"
       KEEP_BEST: ${{ vars.KEEP_BEST || '3' }}   # App zeigt nur die besten 3 (letzte 24 h), Rest wird gelöscht
       KEEP_HOURS: "24"
+      MIN_FUN: ${{ vars.MIN_FUN || '4' }}   # nur Clips mit deutlicher Reaktion des Streamers
       STRICT_GAME: ${{ vars.STRICT_GAME || 'Grand Theft Auto VI' }}   # nur GTA VI – kein Just Chatting/IRL
       MAX_CLIPS: ${{ inputs.max_clips || '12' }}
       CAPTIONS: "1"
