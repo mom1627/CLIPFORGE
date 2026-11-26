@@ -91,3 +91,13 @@ class PunchTest(unittest.TestCase):
         loud = [(i * 0.3, i * 0.3 + 0.25, w) for i, w in enumerate(("no way bro what the hell " * 10).split())]
         self.assertLess(captions.reaction_score(quiet), 1.5)
         self.assertGreater(captions.reaction_score(loud), 1.5)
+
+
+class SentenceHookTest(unittest.TestCase):
+    def test_no_fragments(self):
+        import os, captions
+        os.environ.pop("CAMPAIGN", None)
+        txt = "and then i said to you what the fuck do you think. no way bro you did that!".split()
+        words = [(i * 0.3, i * 0.3 + 0.25, w) for i, w in enumerate(txt)]
+        h = captions.quote_hook(words, 3.0)
+        self.assertIn(h, ("NO WAY BRO YOU DID THAT!", "NO WAY BRO YOU DID THAT"))
