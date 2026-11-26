@@ -7,7 +7,7 @@ Kampagne und fertige Beschreibung (Pflicht-Hashtags der Kampagne inklusive).
 """
 from __future__ import annotations
 import json, os, re, subprocess, sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -151,10 +151,28 @@ def ensure_previews(index: dict, limit: int) -> None:
                     src.unlink(missing_ok=True)
 
 
+def latest_remote_index() -> dict:
+    """docs/clips.json vom GitHub-Stand (origin): andere Läufe haben dort evtl. neuere Clips mit Bewertung."""
+    branch = os.getenv("GITHUB_REF_NAME", "main")
+    try:
+        subprocess.run(["git", "fetch", "-q", "origin", branch], cwd=ROOT, capture_output=True, timeout=60)
+        r = subprocess.run(["git", "show", f"origin/{branch}:docs/clips.json"], cwd=ROOT,
+                           capture_output=True, text=True, timeout=30)
+        if r.returncode == 0:
+            return {c["file"]: c for c in json.loads(r.stdout).get("clips", [])}
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        pass
+    return {}
+
+
 def main() -> int:
     index = {}
     if INDEX.exists():
         index = {c["file"]: c for c in json.loads(INDEX.read_text(encoding="utf-8")).get("clips", [])}
+    if os.getenv("KEEP_BEST") and os.getenv("GITHUB_ACTIONS") == "true":
+        for k, v in latest_remote_index().items():  # Bewertungen neuerer Clips anderer Läufe übernehmen
+            index.setdefault(k, v)
+    known = set(index)
     if len(sys.argv) > 2 and sys.argv[1] == "--merge":  # eigene Einträge (z. B. nach Push-Konflikt) übernehmen
         for c in json.loads(Path(sys.argv[2]).read_text(encoding="utf-8")).get("clips", []):
             old = dict(index.get(c["file"], {}))
@@ -193,8 +211,10 @@ def main() -> int:
     keep = int(os.getenv("KEEP_BEST", "0") or 0)  # z. B. 3: App zeigt nur die 3 besten, Rest wird gelöscht
     if keep and not (len(sys.argv) > 1 and sys.argv[1] == "--merge"):
         index, drop = best_only(index, keep, float(os.getenv("KEEP_HOURS", "24")))
-        if drop and assets:
-            delete_assets([d for d in drop if d in assets])
+        if drop and assets:  # nur Clips löschen, deren Bewertung bekannt ist (nie unbekannte neue Clips)
+            cutoff = (datetime.now(timezone.utc) - timedelta(hours=float(os.getenv("KEEP_HOURS", "24")))).isoformat()
+            delete_assets([d for d in drop if d in assets and
+                           (d in known or str(assets[d].get("created_at", "")) < cutoff)])  # Waisen erst nach 24 h
     elif keep:  # --merge nach Push-Konflikt: nur filtern, gelöscht wurde schon
         index, _ = best_only(index, keep, float(os.getenv("KEEP_HOURS", "24")))
     fix_captions(index)
