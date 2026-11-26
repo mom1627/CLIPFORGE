@@ -73,19 +73,40 @@ def punch(text: str) -> float:
     ws = [w.strip(" .,!?'") for w in t.split()]
     if not ws:
         return 0.0
-    score = 3.0 * sum(p in t for p in PUNCH)
+    import re as _re
+    score = 3.0 * sum(bool(_re.search(r"(?<![a-z'])" + _re.escape(p) + r"(?![a-z'])", t)) for p in PUNCH)
     score += 1.5 * ("?" in t) + 1.5 * ("!" in t)
     score -= 3.0 * (sum(w in FILLER for w in ws) / len(ws) > 0.6)
     score -= 3.0 * (len(set(ws)) < len(ws) * 0.7)
     return score
 
 
+def sentences(words, lo: int = 3, hi: int = 7):
+    """Ganze Sätze/Satzteile aus Whisper-Wörtern: Schnitt an . ? ! , und an Pausen > 0.6 s.
+    Nur 3-7 Wörter – so entstehen keine Bruchstücke wie 'TO YOU WHAT THE FUCK DO'."""
+    out, cur = [], []
+    for i, w in enumerate(words):
+        cur.append(w)
+        t = str(w[2]).strip()
+        gap = (words[i + 1][0] - w[1]) if i + 1 < len(words) else 9
+        if t[-1:] in ".?!," or gap > 0.6:
+            if t[-1:] != "," or len(cur) >= lo:
+                out.append(cur); cur = []
+    if cur:
+        out.append(cur)
+    res = []
+    for c in out:
+        text = " ".join(str(x[2]).strip() for x in c).strip(" ,-")
+        if lo <= len(text.split()) <= hi and 12 <= len(text) <= 38:
+            res.append((c[0][0], c[-1][1], text.upper()))
+    return res
+
+
 def quote_hook(words, around: float | None = None) -> str:
-    """Hook aus dem echten Gesagten (wie 'NOT EVEN A WARNING'): der stärkste Satz (3-6 Wörter);
+    """Hook aus dem echten Gesagten (wie 'NOT EVEN A WARNING'): der stärkste ganze Satz (3-7 Wörter);
     nur wenn er wirklich zieht (punch >= 3), sonst lieber eine starke Vorlage."""
-    lines = [(a, b, t.strip(" .,-")) for a, b, t in group_words(words, max_words=6, max_gap=0.5, max_len=3.2)]
-    lines = [(a, b, t) for a, b, t in lines if 3 <= len(t.split()) <= 6 and 12 <= len(t) <= 34
-             and (not _clean_wanted() or is_clean(t)) and t.lower() not in recent_hooks()]
+    lines = [(a, b, t) for a, b, t in sentences(list(words))
+             if (not _clean_wanted() or is_clean(t)) and t.lower() not in recent_hooks()]
     if not lines:
         return ""
     if around is None:
@@ -103,7 +124,9 @@ def reaction_score(words) -> float:
         return 0.0
     text = " ".join(w[2] for w in words).lower()
     dur = max(1.0, words[-1][1] - words[0][0])
-    return round(len(words) / dur + 0.5 * sum(text.count(p) for p in PUNCH), 2)
+    import re as _re
+    hits = sum(len(_re.findall(r"(?<![a-z'])" + _re.escape(p) + r"(?![a-z'])", text)) for p in PUNCH)
+    return round(len(words) / dur + 0.5 * hits, 2)
 
 
 def make_hook(channel: str, seed: str, lang: str, words=(), around: float | None = None) -> str:

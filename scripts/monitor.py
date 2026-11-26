@@ -143,10 +143,10 @@ def build_clip(folder: Path, end_s: int, pre: int, post: int, dest_dir: Path, ch
         joined.unlink(missing_ok=True)
         return dest
     cams = json.loads(Path(__file__).resolve().parent.parent.joinpath('config/cams.json').read_text())
-    box = cam_box or cams.get(channel)
-    if box is None:  # unbekannter Streamer: Facecam automatisch suchen
+    box = cam_box
+    if box is None:  # live zuerst automatisch suchen (Stream-Layouts ändern sich), gespeicherte Box nur als Ersatz
         import facecam
-        box = facecam.find(joined, float(off), length)
+        box = facecam.find(joined, float(off), length) or cams.get(channel)
         print("FACECAM", channel, box, flush=True)
     if box is None and os.getenv("REQUIRE_FACECAM", "0") == "1":
         print("Keine Webcam gefunden – kein Clip", channel, flush=True)
@@ -175,7 +175,7 @@ def publish(mp4: Path) -> bool:
 
 GTA = "grand theft auto vi"
 # Kategorien ohne Spiel: die Kamera IST das Bild -> Vollbild-Hochformat statt Webcam oben / Gameplay unten
-IRL = {"just chatting", "irl", "travel & outdoors", "food & drink", "sports", "music", "talk shows & podcasts",
+IRL = {"irl", "travel & outdoors", "food & drink", "sports", "music", "talk shows & podcasts",
        "special events", "art", "makers & crafting", "asmr", "fitness & health"}
 
 
