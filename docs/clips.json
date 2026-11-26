@@ -1,7 +1,23 @@
 {
- "updated": "2026-11-26T00:48:48+00:00",
+ "updated": "2026-11-26T00:52:33+00:00",
  "repo": "mom1627/CLIPFORGE",
  "clips": [
+  {
+   "hook": "WHAT THE HELL?",
+   "quality": 3.63,
+   "game": "Grand Theft Auto VI",
+   "file": "clipforge_shroud_20261126_004850.mp4",
+   "streamer": "shroud",
+   "score": 8.51,
+   "campaign": "clipup",
+   "caption": "This is why we watch shroud\n\nFunniest part? 👇\n\n#gta6 #Clipup #shroud",
+   "added": "2026-11-26T00:52:19Z",
+   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_shroud_20261126_004850.mp4",
+   "bytes": 69978805,
+   "asset_updated": "2026-11-26T00:52:21Z",
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795654352/fr34tqdoemosou2n3rm9.mp4",
+   "source": ""
+  },
   {
    "hook": "I'LL DO MY BEST",
    "quality": 4.25,
