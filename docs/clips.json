@@ -1,48 +1,5 @@
 {
- "updated": "2026-11-26T00:37:02+00:00",
+ "updated": "2026-11-26T00:41:13+00:00",
  "repo": "mom1627/CLIPFORGE",
- "clips": [
-  {
-   "hook": "OH MY GOD. STEPHEN AZARCH WENT",
-   "file": "hasanabi_20261125_202442.mp4",
-   "streamer": "hasanabi",
-   "score": 29000.0,
-   "campaign": "clipup",
-   "caption": "The way he reacted – Hasan\n\nRate this 1-10 👇\n\n#Clipup #gta6 #gtavi #viral #hasanabi",
-   "source": "https://www.twitch.tv/videos/2940591649",
-   "added": "2026-11-25T23:57:49Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/hasanabi_20261125_202442.mp4",
-   "bytes": 49912902,
-   "asset_updated": "2026-11-25T23:57:51Z",
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795651079/iczokkkgsgbptxqi3qee.mp4"
-  },
-  {
-   "hook": "OH MY GOD, YEAH, THEY CALL",
-   "file": "hasanabi_20261125_201105.mp4",
-   "streamer": "hasanabi",
-   "score": 31000.0,
-   "campaign": "clipup",
-   "caption": "Instant regret – Hasan\n\nWould you have done the same? 👇\n\n#Clipup #gta6 #gtavi #viral #hasanabi",
-   "source": "https://www.twitch.tv/videos/2940591649",
-   "added": "2026-11-25T23:57:47Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/hasanabi_20261125_201105.mp4",
-   "bytes": 32879814,
-   "asset_updated": "2026-11-25T23:57:48Z",
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795651086/kecssg7accpbfw9jxsdg.mp4"
-  },
-  {
-   "hook": "HEY, WHAT THE FUCK YOU DOING?",
-   "file": "ohnepixel_20261125_182101.mp4",
-   "streamer": "ohnepixel",
-   "score": 35666.67,
-   "campaign": "clipup",
-   "caption": "Chat could not believe it – ohnePixel\n\nWho was right here? 👇\n\n#Clipup #gta6 #gtavi #viral #ohnepixel",
-   "source": "https://www.twitch.tv/videos/2940322036",
-   "added": "2026-11-25T23:57:43Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/ohnepixel_20261125_182101.mp4",
-   "bytes": 95707616,
-   "asset_updated": "2026-11-25T23:57:46Z",
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795651098/sdxwmb3brfl1amhyvrgo.mp4"
-  }
- ]
+ "clips": []
 }
