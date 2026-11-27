@@ -102,3 +102,17 @@ class BrightnessTest(unittest.TestCase):
             for i, v in enumerate((20, 30, 25)):
                 p = Path(t) / f"{i}.png"; Image.new("L", (10, 10), v).save(p); ps.append(p)
             self.assertLess(gameplay_check.brightness(ps), gameplay_check.MIN_BRIGHT)
+
+
+class FlatScreenTest(unittest.TestCase):
+    def test_browser_like_frames_flat(self):
+        import tempfile, random, gameplay_check
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as t:
+            flat, busy = [], []
+            for i in range(3):
+                p = Path(t) / f"f{i}.png"; Image.new("L", (480, 270), 40).save(p); flat.append(p)
+                q = Path(t) / f"b{i}.png"; im = Image.new("L", (480, 270))
+                im.putdata([random.randint(0, 255) for _ in range(480 * 270)]); im.save(q); busy.append(q)
+            self.assertGreater(gameplay_check.flat_share(flat), gameplay_check.MAX_FLAT)
+            self.assertLess(gameplay_check.flat_share(busy), gameplay_check.MAX_FLAT)
