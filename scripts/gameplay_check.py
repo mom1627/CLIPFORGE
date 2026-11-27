@@ -12,7 +12,8 @@ SAMPLES = int(os.getenv("GAMEPLAY_SAMPLES", "10"))
 MIN_MOTION = float(os.getenv("GAMEPLAY_MIN_MOTION", "6"))   # mittlere Pixeländerung (0..255)
 FACE_SHARE = float(os.getenv("GAMEPLAY_FACE_SHARE", "0.04"))  # Gesichtsfläche / Bildfläche
 FACE_FRAMES = float(os.getenv("GAMEPLAY_FACE_FRAMES", "0.5"))  # Anteil der Bilder mit großem Gesicht
-MIN_BRIGHT = float(os.getenv("GAMEPLAY_MIN_BRIGHT", "45"))  # mittlere Helligkeit (0..255); dunkle Szenen = schlecht sichtbar
+MIN_BRIGHT = float(os.getenv("GAMEPLAY_MIN_BRIGHT", "45"))
+MAX_FLAT = float(os.getenv("GAMEPLAY_MAX_FLAT", "0.33"))  # Anteil einfarbiger Flächen: Browser/Desktop/Ladebildschirm  # mittlere Helligkeit (0..255); dunkle Szenen = schlecht sichtbar
 
 
 def _crops(mp4: Path, outdir: Path) -> list[Path]:
@@ -44,6 +45,25 @@ def brightness(images: list[Path]) -> float:
     return v[len(v) // 2] if v else 255.0
 
 
+def flat_share(images: list[Path]) -> float:
+    """Median-Anteil einfarbiger 8x8-Blöcke. GTA-Gameplay 0.05-0.30; Browser, Chat, Desktop,
+    Ladebildschirm und dunkle Szenen 0.35-0.9 (gemessen an 11 echten Clips, 27.11.)."""
+    from PIL import Image, ImageStat
+    vals = []
+    for p in images:
+        im = Image.open(p).convert("L")
+        im = im.resize((240, max(8, int(240 * im.size[1] / im.size[0]))))
+        w, h = im.size
+        n = f = 0
+        for y in range(0, h - 7, 8):
+            for x in range(0, w - 7, 8):
+                n += 1
+                f += ImageStat.Stat(im.crop((x, y, x + 8, y + 8))).stddev[0] < 2.5
+        vals.append(f / max(1, n))
+    vals.sort()
+    return vals[len(vals) // 2] if vals else 0.0
+
+
 def big_face_share(images: list[Path], detect) -> float:
     from PIL import Image
     hits = 0
@@ -69,6 +89,9 @@ def check(mp4: Path, detect=None) -> tuple[bool, str]:
         b = brightness(imgs)
         if b < MIN_BRIGHT:
             return False, f"zu dunkel ({b:.0f}) – Gameplay kaum zu erkennen"
+        fl = flat_share(imgs)
+        if fl > MAX_FLAT:
+            return False, f"kein Spielbild ({fl:.2f} einfarbig) – Browser/Desktop/Chat/Ladebildschirm"
         if detect is None:
             try:
                 import safety
