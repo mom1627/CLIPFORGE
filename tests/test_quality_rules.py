@@ -116,3 +116,17 @@ class FlatScreenTest(unittest.TestCase):
                 im.putdata([random.randint(0, 255) for _ in range(480 * 270)]); im.save(q); busy.append(q)
             self.assertGreater(gameplay_check.flat_share(flat), gameplay_check.MAX_FLAT)
             self.assertLess(gameplay_check.flat_share(busy), gameplay_check.MAX_FLAT)
+
+
+class KickVodTest(unittest.TestCase):
+    def test_every_three_hours(self):
+        import monitor
+        calls = []
+        with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true", "GITHUB_REPOSITORY": "a/b"}), \
+             mock.patch.object(monitor.shutil, "which", return_value="/usr/bin/gh"), \
+             mock.patch.object(monitor.subprocess, "run", side_effect=lambda *a, **k: calls.append(a) or mock.Mock(returncode=0, stderr="")):
+            monitor._last_vod[0] = 0.0
+            self.assertTrue(monitor.kick_vod_search(100000.0))
+            self.assertFalse(monitor.kick_vod_search(100000.0 + 3600))
+            self.assertTrue(monitor.kick_vod_search(100000.0 + 3 * 3600 + 1))
+        self.assertEqual(len(calls), 2)
