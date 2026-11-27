@@ -18,5 +18,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
-          gh workflow run vod-clips.yml -R "$REPO" -f campaign=clipup -f hours=24 -f max_clips=6
+          gh workflow run vod-clips.yml -R "$REPO" -f campaign=clipup -f hours=72 -f max_clips=6 -f title_filter=
           gh workflow run vod-clips.yml -R "$REPO" -f campaign=lacy -f hours=24 -f max_clips=4

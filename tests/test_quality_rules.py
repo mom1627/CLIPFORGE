@@ -71,3 +71,34 @@ class BestOnlyTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HookQualityTest(unittest.TestCase):
+    def test_banal_and_unsure_hooks_rejected(self):
+        import captions
+        captions.PROBS.clear()
+        for txt in ("ok. how you doing?", "yeah. i'll do my best."):
+            words = [(i * 0.3, i * 0.3 + 0.25, w) for i, w in enumerate(txt.split())]
+            self.assertEqual(captions.quote_hook(words, 1.0), "", txt)
+        words = [(i * 0.3, i * 0.3 + 0.25, w) for i, w in enumerate("ok. it should really burn a holy pocket!".split())]
+        for w in words:
+            captions.PROBS[(round(w[0], 2), w[2])] = 0.3 if w[2] == "holy" else 0.95
+        self.assertEqual(captions.quote_hook(words, 1.0), "")
+        captions.PROBS.clear()
+
+    def test_good_hook_kept(self):
+        import captions
+        captions.PROBS.clear()
+        words = [(i * 0.3, i * 0.3 + 0.25, w) for i, w in enumerate("okay. no way you did that bro?".split())]
+        self.assertEqual(captions.quote_hook(words, 1.0), "NO WAY YOU DID THAT BRO?")
+
+
+class BrightnessTest(unittest.TestCase):
+    def test_dark_rejected(self):
+        import tempfile, gameplay_check
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as t:
+            ps = []
+            for i, v in enumerate((20, 30, 25)):
+                p = Path(t) / f"{i}.png"; Image.new("L", (10, 10), v).save(p); ps.append(p)
+            self.assertLess(gameplay_check.brightness(ps), gameplay_check.MIN_BRIGHT)

@@ -12,6 +12,7 @@ SAMPLES = int(os.getenv("GAMEPLAY_SAMPLES", "10"))
 MIN_MOTION = float(os.getenv("GAMEPLAY_MIN_MOTION", "6"))   # mittlere Pixeländerung (0..255)
 FACE_SHARE = float(os.getenv("GAMEPLAY_FACE_SHARE", "0.04"))  # Gesichtsfläche / Bildfläche
 FACE_FRAMES = float(os.getenv("GAMEPLAY_FACE_FRAMES", "0.5"))  # Anteil der Bilder mit großem Gesicht
+MIN_BRIGHT = float(os.getenv("GAMEPLAY_MIN_BRIGHT", "45"))  # mittlere Helligkeit (0..255); dunkle Szenen = schlecht sichtbar
 
 
 def _crops(mp4: Path, outdir: Path) -> list[Path]:
@@ -36,6 +37,13 @@ def motion(images: list[Path]) -> float:
     return diffs[len(diffs) // 2]
 
 
+def brightness(images: list[Path]) -> float:
+    """Median-Helligkeit der Spielbereich-Bilder (0..255)."""
+    from PIL import Image, ImageStat
+    v = sorted(ImageStat.Stat(Image.open(p).convert("L")).mean[0] for p in images)
+    return v[len(v) // 2] if v else 255.0
+
+
 def big_face_share(images: list[Path], detect) -> float:
     from PIL import Image
     hits = 0
@@ -58,6 +66,9 @@ def check(mp4: Path, detect=None) -> tuple[bool, str]:
         m = motion(imgs)
         if m < MIN_MOTION:
             return False, f"kaum Bewegung ({m:.1f}) – Menü/Ladebildschirm/Dashboard"
+        b = brightness(imgs)
+        if b < MIN_BRIGHT:
+            return False, f"zu dunkel ({b:.0f}) – Gameplay kaum zu erkennen"
         if detect is None:
             try:
                 import safety

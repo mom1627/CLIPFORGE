@@ -65,6 +65,7 @@ jobs:
       TITLE_FILTER: ${{ inputs.title_filter || 'GTA' }}
       MIN_FUN: ${{ inputs.min_fun || vars.MIN_FUN || '4' }}
       VODS_PER_STREAMER: "1"
+      VOD_ROTATE: ${{ github.event_name == 'workflow_dispatch' && inputs.streamers == '' && '1' || '0' }}
       SCAN_WINDOWS: "2"
       SCAN_SECONDS: "240"
       MIN_GAP: "120"

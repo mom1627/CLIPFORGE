@@ -86,6 +86,24 @@ DANGLING = {"a", "an", "the", "in", "on", "at", "to", "of", "for", "with", "and"
             "from", "by", "as", "than", "when", "because", "about", "into", "gonna", "wanna"}
 
 
+PROBS: dict = {}  # (start, wort) -> Whisper-Sicherheit; unsicher erkannte Wörter nie als Hook
+HOOK_MIN_PROB = float(os.getenv("HOOK_MIN_PROB", "0.6"))
+BANAL = ("how you doing", "how are you", "what's up", "whats up", "hello", "good morning", "good night",
+         "thank you", "thanks", "see you", "bye", "let's go chat", "hi chat", "i don't know", "i'll do my best")
+
+
+def confident(chunk) -> bool:
+    """Alle Wörter sicher erkannt? (z. B. 'HOLY POCKET' statt 'hole in my pocket' fällt raus)"""
+    ps = [PROBS.get((round(w[0], 2), w[2])) for w in chunk]
+    ps = [p for p in ps if p is not None]
+    return not ps or min(ps) >= HOOK_MIN_PROB
+
+
+def banal(text: str) -> bool:
+    t = " ".join(text.lower().replace("?", " ").replace("!", " ").replace(".", " ").replace(",", " ").split())
+    return any(t == b or t.startswith(b + " ") and len(t.split()) <= len(b.split()) + 1 for b in BANAL)
+
+
 def complete(text: str) -> bool:
     """Ganzer Satz: endet nicht auf ein Bindewort/Artikel ('... IN A'), keine Wort-Wiederholung, kein Abbruch."""
     ws = [w.strip(" .,!?'\"-").lower() for w in text.split() if w.strip(" .,!?'\"-")]
@@ -116,7 +134,8 @@ def sentences(words, lo: int = 3, hi: int = 7, strict: bool = False):
             i0 = words.index(c[0]) if c[0] in words else 0
             prev = str(words[i0 - 1][2]).strip() if i0 > 0 else "."
             starts = prev[-1:] in ".?!"  # Satzanfang, nicht nur Pause (sonst 'IS SHE DOING, DUDE')
-            if not (str(c[-1][2]).strip()[-1:] in ".?!" and starts and complete(text)):
+            if not (str(c[-1][2]).strip()[-1:] in ".?!" and starts and complete(text)
+                    and confident(c) and not banal(text)):
                 continue
         if lo <= len(text.split()) <= hi and 12 <= len(text) <= 38:
             res.append((c[0][0], c[-1][1], text.upper()))
@@ -270,7 +289,11 @@ def transcribe(path: Path):
                           "-f", "f32le", "-"], capture_output=True, timeout=120).stdout
     audio = np.frombuffer(pcm[: len(pcm) // 4 * 4], dtype=np.float32)   # kein PyAV noetig
     segs, info = model.transcribe(audio, language=lang, word_timestamps=True, vad_filter=True, beam_size=1)
-    words = [(w.start, w.end, w.word) for s in segs for w in (s.words or [])]
+    words = []
+    for s in segs:
+        for w in (s.words or []):
+            words.append((w.start, w.end, w.word))
+            PROBS[(round(w.start, 2), w.word)] = float(getattr(w, "probability", 1.0) or 0.0)
     return words, info.language
 
 
