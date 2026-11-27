@@ -623,6 +623,9 @@ def main() -> int:
         return redo_clips(redo, report)
     try:
         channels = allowed_channels(os.getenv("VOD_STREAMERS", ""))
+        if os.getenv("VOD_ROTATE") == "1" and channels:  # automatischer Lauf: jedes Mal andere Streamer zuerst
+            k = (int(time.time()) // 10800) * 5 % len(channels)  # alle 3 h um 5 weiterdrehen
+            channels = channels[k:] + channels[:k]
         report["channels"] = channels
         vods = []
         vod_urls = [u.strip() for u in os.getenv("VOD_URL", "").split(",") if u.strip()]
