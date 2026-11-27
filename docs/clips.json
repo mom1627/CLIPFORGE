@@ -1,7 +1,37 @@
 {
- "updated": "2026-11-27T18:35:50+00:00",
+ "updated": "2026-11-27T19:29:01+00:00",
  "repo": "mom1627/CLIPFORGE",
  "clips": [
+  {
+   "hook": "BRO, CHET, WE'RE LITERALLY 500K",
+   "quality": 6.63,
+   "file": "kaicenat_20261124_220412.mp4",
+   "streamer": "kaicenat",
+   "score": 7125.0,
+   "campaign": "clipup",
+   "caption": "This is why we watch Kai Cenat\n\nRate this 1-10 👇\n\n#Clipup #gta6 #gtavi #viral #kaicenat",
+   "source": "https://www.twitch.tv/videos/2939504732",
+   "added": "2026-11-27T19:28:30Z",
+   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/kaicenat_20261124_220412.mp4",
+   "bytes": 76614334,
+   "asset_updated": "2026-11-27T19:28:32Z",
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795807728/t5lapww5hjjkxsaqomo8.mp4"
+  },
+  {
+   "hook": "Watch till the end",
+   "quality": 6.36,
+   "file": "kaicenat_20261124_204904.mp4",
+   "streamer": "kaicenat",
+   "score": 18500.0,
+   "campaign": "clipup",
+   "caption": "Watch till the end – Kai Cenat\n\nRate this 1-10 👇\n\n#Clipup #gta6 #gtavi #viral #kaicenat",
+   "source": "https://www.twitch.tv/videos/2939504732",
+   "added": "2026-11-27T19:28:25Z",
+   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/kaicenat_20261124_204904.mp4",
+   "bytes": 71802547,
+   "asset_updated": "2026-11-27T19:28:27Z",
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795807738/dswzrrmeypwb2l5gbcts.mp4"
+  },
   {
    "hook": "HOW DID I FUMBLE THAT GAME?",
    "quality": 9.67,
@@ -16,21 +46,6 @@
    "bytes": 81781917,
    "asset_updated": "2026-11-27T02:20:12Z",
    "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795746040/pmllzujklfopdi0t6rjt.mp4"
-  },
-  {
-   "hook": "WHAT ARE YOU DOING BRO?",
-   "quality": 8.66,
-   "file": "kaicenat_20261124_181759.mp4",
-   "streamer": "kaicenat",
-   "score": 28000.0,
-   "campaign": "clipup",
-   "caption": "He really said that – Kai Cenat\n\nDid he deserve that? 👇\n\n#Clipup #gta6 #gtavi #viral #kaicenat",
-   "source": "https://www.twitch.tv/videos/2939504732",
-   "added": "2026-11-26T03:34:06Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/kaicenat_20261124_181759.mp4",
-   "bytes": 44176472,
-   "asset_updated": "2026-11-26T03:34:07Z",
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795664060/pqjhd3gfmd2107cqxoyt.mp4"
   }
  ]
 }
