@@ -1,18 +1,36 @@
 {
- "updated": "2026-11-27T01:50:09+00:00",
+ "updated": "2026-11-27T02:20:42+00:00",
  "repo": "mom1627/CLIPFORGE",
  "clips": [
   {
-   "file": "clipforge_kelo_20261127_010027.mp4",
-   "streamer": "kelo",
-   "score": 0,
-   "caption": "Kelo can't believe this 😭\n\nWhat would you do? 👇\n\n#gta6 #gtavi #viral #kelo",
-   "added": "2026-11-27T01:02:44Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_kelo_20261127_010027.mp4",
-   "bytes": 36172536,
-   "asset_updated": "2026-11-27T01:02:46Z",
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795744189/ib6mzdbigkoewbooshzt.mp4",
-   "campaign": ""
+   "hook": "This is why we watch Jynxzi",
+   "quality": 4.6,
+   "file": "jynxzi_20261124_184840.mp4",
+   "streamer": "jynxzi",
+   "score": 9333.33,
+   "campaign": "clipup",
+   "caption": "This is why we watch Jynxzi\n\nBe honest… 👇\n\n#Clipup #gta6 #gtavi #viral #jynxzi",
+   "source": "https://www.twitch.tv/videos/2939550825",
+   "added": "2026-11-27T02:20:12Z",
+   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/jynxzi_20261124_184840.mp4",
+   "bytes": 28677903,
+   "asset_updated": "2026-11-27T02:20:13Z",
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795746025/f6lb4lsxfbez3hqihfwp.mp4"
+  },
+  {
+   "hook": "HOW DID I FUMBLE THAT GAME?",
+   "quality": 9.67,
+   "file": "kaicenat_20261124_222437.mp4",
+   "streamer": "kaicenat",
+   "score": 31333.33,
+   "campaign": "clipup",
+   "caption": "Kai Cenat was NOT ready\n\nRate this 1-10 👇\n\n#Clipup #gta6 #gtavi #viral #kaicenat",
+   "source": "https://www.twitch.tv/videos/2939504732",
+   "added": "2026-11-27T02:20:09Z",
+   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/kaicenat_20261124_222437.mp4",
+   "bytes": 81781917,
+   "asset_updated": "2026-11-27T02:20:12Z",
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795746040/pmllzujklfopdi0t6rjt.mp4"
   },
   {
    "hook": "WHAT ARE YOU DOING BRO?",
