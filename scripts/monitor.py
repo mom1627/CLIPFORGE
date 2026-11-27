@@ -230,6 +230,22 @@ def quality_ok(mp4: Path) -> tuple[bool, str]:
     return True, "ok"
 
 
+_last_vod = [0.0]
+
+
+def kick_vod_search(now: float) -> bool:
+    """Alle VOD_EVERY_MIN Minuten die Suche in alten GTA-Streams starten (auto-campaigns.yml).
+    GitHubs Zeitplan lässt Läufe oft aus – der 24/7-Monitor läuft dagegen sicher."""
+    every = env_f("VOD_EVERY_MIN", 180) * 60
+    if every <= 0 or now - _last_vod[0] < every or os.getenv("GITHUB_ACTIONS") != "true" or not shutil.which("gh"):
+        return False
+    _last_vod[0] = now
+    r = subprocess.run(["gh", "workflow", "run", "auto-campaigns.yml", "-R", os.getenv("GITHUB_REPOSITORY", ""),
+                        "--ref", os.getenv("GITHUB_REF_NAME", "main")], capture_output=True, text=True, timeout=60)
+    print("Suche in alten Streams gestartet" if r.returncode == 0 else "VOD-Start fehlgeschlagen: " + r.stderr[-200:], flush=True)
+    return r.returncode == 0
+
+
 def pick_live(live: dict, allowed: list[str], last_seen: dict, now: float, cooldown: float) -> str | None:
     """Bester Live-Streamer: meiste Zuschauer, passendes Spiel; wer gerade dran war, pausiert 'cooldown'
     Sekunden, damit nacheinander alle Live-Streamer bewertet werden (außer es ist sonst keiner live)."""
@@ -272,6 +288,7 @@ def main() -> int:
     report = {"started": datetime.now(timezone.utc).isoformat(), "sessions": [], "clips": []}
     clips = 0
     while time.time() < budget and clips < max_clips:
+        kick_vod_search(time.time())
         live, game = None, None
         info = lc.live_streams(channels)
         if info is not None:
@@ -304,6 +321,7 @@ def main() -> int:
         try:
             while time.time() < session_end and clips < max_clips:
                 time.sleep(5)
+                kick_vod_search(time.time())
                 if ff.poll() is not None:
                     print("Stream beendet/Aufnahme gestoppt.", flush=True); break
                 segs = sorted(folder.glob("seg_*.ts"))
