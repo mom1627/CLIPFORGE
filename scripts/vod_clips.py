@@ -669,7 +669,7 @@ def main() -> int:
                 chat = chat_offsets(chat_path)
                 if not chat:
                     report["warnings"].append("Chat-Replay nicht verfuegbar fuer VOD " + vod["id"])
-                peaks = [] if chat or not vod["url"].startswith("https://www.twitch.tv") else chat_probe.chat_peaks(vod["id"], vod["duration"], count=max(4, max_clips * 2))
+                peaks = [] if chat or not vod["url"].startswith("https://www.twitch.tv") else chat_probe.chat_peaks(vod["id"], vod["duration"], count=max(8, max_clips * 3))
                 if peaks:  # schnell: Chat-Spitzen, nur kurze Ausschnitte laden
                     report["warnings"].append(f"Chat-Spitzen fuer VOD {vod['id']}: {len(peaks)}")
                     for off, ratio in peaks:
@@ -710,11 +710,19 @@ def main() -> int:
             candidates = [c for c in candidates if c.start_s >= skip_start]
             existing = existing_clip_names()  # schon vorhandene/ausgeblendete Clips nicht erneut schneiden
             candidates = [c for c in candidates if clip_filename(c, by_id[c.vod_id]) not in existing]
-            selected = top_candidates(candidates, max_clips, min_gap=gap,
-                                      per_vod=bounded_int("PER_VOD", 2, 1, 12))
+            # Mehr Kandidaten als Ziel-Clips prüfen: viele fallen durch (Reaktion, Gameplay, Webcam);
+            # aufhören, sobald genug gute Clips da sind oder das Zeitbudget (VOD_BUDGET_MIN) erreicht ist.
+            selected = top_candidates(candidates, max_clips * bounded_int("CANDIDATE_FACTOR", 3, 1, 6),
+                                      min_gap=gap, per_vod=bounded_int("PER_VOD", 2, 1, 12) * 2)
             report["candidate_count"] = len(candidates)
             report["selected_count"] = len(selected)
+            budget = bounded_int("VOD_BUDGET_MIN", 50, 5, 300) * 60
             for chosen in selected:
+                if len(report["clips"]) >= max_clips:
+                    break
+                if time.monotonic() - started > budget:
+                    report["warnings"].append("Zeitbudget erreicht: weitere Kandidaten ausgelassen")
+                    break
                 try:
                     row = produce(chosen, by_id[chosen.vod_id], tmp, cams)
                     report["clips"].append(row)
