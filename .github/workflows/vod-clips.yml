@@ -54,7 +54,7 @@ concurrency:
 jobs:
   vod-clips:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     env:
       # STRICT allowlist. Never replace this with user-supplied channels.
       # CAMPAIGN_CHANNELS: Streamer offizieller Clipping-Kampagnen, denen der Nutzer beigetreten ist (z. B. lacy / Reach Clipping).
@@ -64,7 +64,7 @@ jobs:
       MAX_CLIPS: ${{ inputs.max_clips || '7' }}
       TITLE_FILTER: ${{ inputs.title_filter || 'GTA' }}
       MIN_FUN: ${{ inputs.min_fun || vars.MIN_FUN || '4' }}
-      VODS_PER_STREAMER: "1"
+      VODS_PER_STREAMER: "2"
       VOD_ROTATE: ${{ github.event_name == 'workflow_dispatch' && inputs.streamers == '' && '1' || '0' }}
       SCAN_WINDOWS: "2"
       SCAN_SECONDS: "240"
