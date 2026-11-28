@@ -97,7 +97,7 @@ wird passend zur Kampagne erzeugt (`fix_captions`, Lacy → `#LACY`). Echtes Lö
   Gesicht haben (`gameplay_check.cam_check`) und unten Gameplay ohne großes Gesicht (`full_check`), in beiden Pipelines.
 - **Hooks**: Zitat-Hook nur als ganzer Satz (Satzanfang nach . ? !, Ende auf . ? !, kein Ende auf „in a“ usw.),
   sonst Vorlage. `QUOTE_HOOKS=0` schaltet Zitat-Hooks ganz ab.
-- **App**: nur die besten `KEEP_BEST=3` Clips der letzten 24 h (Rang: Reaktion `quality`, dann Score); der Rest wird
+- **App** (seit 28.11. gelockert, Nutzer bekam keine neuen Clips mehr): die besten `KEEP_BEST=10` Clips der letzten 48 h, `MIN_FUN=3` (Rang: Reaktion `quality`, dann Score); der Rest wird
   aus dem Release gelöscht. Live-Clips erscheinen **sofort** (`scripts/app_sync.py` nach jedem Upload).
 
 ## 8. Arbeitsweise (bitte einhalten)

@@ -25,8 +25,8 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: clips
       PREVIEW_MAX: "40"
-      KEEP_BEST: ${{ vars.KEEP_BEST || '3' }}   # App zeigt nur die besten 3 (letzte 24 h), Rest wird gelöscht
-      KEEP_HOURS: "24"
+      KEEP_BEST: ${{ vars.KEEP_BEST || '10' }}   # App zeigt die besten 10 (letzte 48 h), Rest wird gelöscht
+      KEEP_HOURS: "48"
       CLOUDINARY_CLOUD_NAME: ${{ vars.CLOUDINARY_CLOUD_NAME }}
       CLOUDINARY_UPLOAD_PRESET: ${{ vars.CLOUDINARY_UPLOAD_PRESET }}
     steps:
