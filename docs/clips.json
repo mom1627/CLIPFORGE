@@ -1,7 +1,22 @@
 {
- "updated": "2026-11-28T01:26:55+00:00",
+ "updated": "2026-11-28T02:21:11+00:00",
  "repo": "mom1627/CLIPFORGE",
  "clips": [
+  {
+   "hook": "LIKE BRO YOU'RE DEMENTED",
+   "quality": 5.42,
+   "file": "jynxzi_20261127_210223.mp4",
+   "streamer": "jynxzi",
+   "score": 17000.0,
+   "campaign": "clipup",
+   "caption": "This went way too far – Jynxzi\n\nWho was right here? 👇\n\n#Clipup #gta6 #gtavi #viral #jynxzi",
+   "source": "https://www.twitch.tv/videos/2942559633",
+   "added": "2026-11-28T02:20:55Z",
+   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/jynxzi_20261127_210223.mp4",
+   "bytes": 44171700,
+   "asset_updated": "2026-11-28T02:20:57Z",
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795832469/r38nsqnh6okph6je7lgu.mp4"
+  },
   {
    "hook": "BRO, CHET, WE'RE LITERALLY 500K",
    "quality": 6.63,
@@ -31,21 +46,6 @@
    "bytes": 71802547,
    "asset_updated": "2026-11-27T19:28:27Z",
    "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795807738/dswzrrmeypwb2l5gbcts.mp4"
-  },
-  {
-   "hook": "HOW DID I FUMBLE THAT GAME?",
-   "quality": 9.67,
-   "file": "kaicenat_20261124_222437.mp4",
-   "streamer": "kaicenat",
-   "score": 31333.33,
-   "campaign": "clipup",
-   "caption": "Kai Cenat was NOT ready\n\nRate this 1-10 👇\n\n#Clipup #gta6 #gtavi #viral #kaicenat",
-   "source": "https://www.twitch.tv/videos/2939504732",
-   "added": "2026-11-27T02:20:09Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/kaicenat_20261124_222437.mp4",
-   "bytes": 81781917,
-   "asset_updated": "2026-11-27T02:20:12Z",
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795746040/pmllzujklfopdi0t6rjt.mp4"
   }
  ]
 }
