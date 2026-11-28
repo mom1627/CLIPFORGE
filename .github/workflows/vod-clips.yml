@@ -41,7 +41,7 @@ on:
       min_fun:
         description: "Mindest-Reaktion im Clip (Sprechtempo + Reaktionswörter); höher = nur starke Reaktionen"
         required: false
-        default: "4"
+        default: "3"
         type: string
 
 permissions:
@@ -63,7 +63,7 @@ jobs:
       VOD_HOURS: ${{ inputs.hours || '96' }}
       MAX_CLIPS: ${{ inputs.max_clips || '7' }}
       TITLE_FILTER: ${{ inputs.title_filter || 'GTA' }}
-      MIN_FUN: ${{ inputs.min_fun || vars.MIN_FUN || '4' }}
+      MIN_FUN: ${{ inputs.min_fun || vars.MIN_FUN || '3' }}
       VODS_PER_STREAMER: "2"
       VOD_ROTATE: ${{ github.event_name == 'workflow_dispatch' && inputs.streamers == '' && '1' || '0' }}
       SCAN_WINDOWS: "2"
@@ -85,8 +85,8 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: clips
       REQUIRE_FACECAM: "1"
-      KEEP_BEST: ${{ vars.KEEP_BEST || '3' }}   # App zeigt nur die besten 3 (letzte 24 h), Rest wird gelöscht
-      KEEP_HOURS: "24"
+      KEEP_BEST: ${{ vars.KEEP_BEST || '10' }}   # App zeigt die besten 10 (letzte 48 h), Rest wird gelöscht
+      KEEP_HOURS: "48"
       CLOUDINARY_CLOUD_NAME: ${{ vars.CLOUDINARY_CLOUD_NAME }}
       CLOUDINARY_UPLOAD_PRESET: ${{ vars.CLOUDINARY_UPLOAD_PRESET }}
       CLIPFORGE_OUTPUT: output
