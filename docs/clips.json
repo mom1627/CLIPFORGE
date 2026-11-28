@@ -1,7 +1,37 @@
 {
- "updated": "2026-11-28T12:07:05+00:00",
+ "updated": "2026-11-28T13:02:00+00:00",
  "repo": "mom1627/CLIPFORGE",
  "clips": [
+  {
+   "hook": "This went way too far",
+   "quality": 7.42,
+   "file": "hasanabi_20261127_232319.mp4",
+   "streamer": "hasanabi",
+   "score": 21600.0,
+   "campaign": "clipup",
+   "caption": "The ending is insane – Hasan\n\nWould you have done the same? 👇\n\n#Clipup #gta6 #gtavi #viral #hasanabi",
+   "source": "https://www.twitch.tv/videos/2942448177",
+   "added": "2026-11-28T13:01:39Z",
+   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/hasanabi_20261127_232319.mp4",
+   "bytes": 37232675,
+   "asset_updated": "2026-11-28T13:01:40Z",
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795870910/fzkycvxnfwzw0tbbpn9b.mp4"
+  },
+  {
+   "hook": "He was NOT ready",
+   "quality": 3.07,
+   "file": "hasanabi_20261127_231654.mp4",
+   "streamer": "hasanabi",
+   "score": 57000.0,
+   "campaign": "clipup",
+   "caption": "This escalated fast – Hasan\n\nWho was right here? 👇\n\n#Clipup #gta6 #gtavi #viral #hasanabi",
+   "source": "https://www.twitch.tv/videos/2942448177",
+   "added": "2026-11-28T13:01:37Z",
+   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/hasanabi_20261127_231654.mp4",
+   "bytes": 51820223,
+   "asset_updated": "2026-11-28T13:01:38Z",
+   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795870918/ddqcmqjrvessxwwkaxdn.mp4"
+  },
   {
    "hook": "DO YOU HAVE TO KILL HIM?",
    "quality": 3.44,
@@ -93,30 +123,6 @@
    "asset_updated": "2026-11-27T23:13:29Z",
    "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795833463/qeb9zllmcb5rbuy4nk52.mp4",
    "source": ""
-  },
-  {
-   "file": "hasanabi_20261126_235337.mp4",
-   "streamer": "hasanabi",
-   "score": 0,
-   "caption": "Hasan can't believe this 😭\n\nWho was right here? 👇\n\n#gta6 #gtavi #viral #hasanabi",
-   "added": "2026-11-27T21:59:36Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/hasanabi_20261126_235337.mp4",
-   "bytes": 74123736,
-   "asset_updated": "2026-11-27T21:59:38Z",
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795833580/jmsianvnxjnomacy1loo.mp4",
-   "campaign": ""
-  },
-  {
-   "file": "clipforge_hasanabi_20261127_215301.mp4",
-   "streamer": "hasanabi",
-   "score": 0,
-   "caption": "Hasan can't believe this 😭\n\nWho was right here? 👇\n\n#gta6 #gtavi #viral #hasanabi",
-   "added": "2026-11-27T21:56:50Z",
-   "url": "https://github.com/mom1627/CLIPFORGE/releases/download/clips/clipforge_hasanabi_20261127_215301.mp4",
-   "bytes": 53997484,
-   "asset_updated": "2026-11-27T21:56:52Z",
-   "preview": "https://res.cloudinary.com/rmvh23xt/video/upload/v1795833592/rbykg6owm6imy62fm9nt.mp4",
-   "campaign": ""
   },
   {
    "hook": "BRO, CHET, WE'RE LITERALLY 500K",
